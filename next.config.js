@@ -1,20 +1,16 @@
-module.exports = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: "standalone",
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'https:spiko-dev.apponward.com/routes/api/:path*', 
+        source: "/api/:path*",
+        destination: "https://api.meridiet.com/api/v1/:path*",
       },
-    ]
-  },
-}
-
-
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  eslint: {
-    // ESLint checks ko ignore kar dega build aur dev ke time
-    ignoreDuringBuilds: true,
+    ];
   },
 };
 

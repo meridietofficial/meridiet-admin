@@ -5,8 +5,6 @@
 
 # Node artifact files
 
-.next/*
-.next/
 .next/cache/
 node_modules/
 dist/

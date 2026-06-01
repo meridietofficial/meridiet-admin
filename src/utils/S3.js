@@ -1,23 +1,19 @@
-import AWS from "aws-sdk";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
-AWS.config.update({
-  accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY,
-  secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_KEY,
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY,
+    secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_KEY,
+  },
   region: process.env.NEXT_PUBLIC_AWS_REGION,
 });
 
-const s3 = new AWS.S3({
-  signatureVersion: 'v4',
-});
-
 export const uploadFileToS3 = async (file, fileName) => {
-  // Validate file size (max 15MB as per UI)
-  const maxSizeInBytes = 15 * 1024 * 1024; // 15MB
+  const maxSizeInBytes = 15 * 1024 * 1024;
   if (file.size > maxSizeInBytes) {
     throw new Error("File size exceeds 15MB limit");
   }
 
-  // Validate file type
   if (!file.type.startsWith("image/")) {
     throw new Error("File must be an image");
   }
@@ -28,25 +24,21 @@ export const uploadFileToS3 = async (file, fileName) => {
     Body: file,
     ContentDisposition: "inline",
     ContentType: file.type,
-    // Note: ACL removed because bucket does not allow ACLs
-    // Files will inherit bucket's public access settings
   };
 
   try {
-    const data = await s3.upload(params).promise();
-    return data.Location;
+    await s3.send(new PutObjectCommand(params));
+    return `https://${params.Bucket}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${fileName}`;
   } catch (error) {
-
-    // Provide more specific error messages
-    if (error.code === "NetworkingError") {
+    if (error.name === "NetworkingError") {
       throw new Error("Network error. Please check your internet connection.");
-    } else if (error.code === "InvalidAccessKeyId") {
+    } else if (error.name === "InvalidAccessKeyId") {
       throw new Error("Invalid AWS credentials. Please contact support.");
-    } else if (error.code === "SignatureDoesNotMatch") {
+    } else if (error.name === "SignatureDoesNotMatch") {
       throw new Error("AWS signature error. Please contact support.");
-    } else if (error.code === "AccessDenied") {
+    } else if (error.name === "AccessDenied") {
       throw new Error("Access denied to S3 bucket. Please contact support.");
-    } else if (error.code === "NoSuchBucket") {
+    } else if (error.name === "NoSuchBucket") {
       throw new Error("S3 bucket not found. Please contact support.");
     } else {
       throw new Error(error.message || "Failed to upload image to S3");

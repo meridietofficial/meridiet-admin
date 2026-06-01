@@ -10,10 +10,12 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "aws-sdk": "^2.1692.0",
+    "@aws-sdk/client-s3": "^3.1057.0",
     "axios": "^1.4.0",
+    "baseline-browser-mapping": "^2.10.33",
     "body-parser": "^1.20.2",
     "bootstrap": "^5.3.0",
+    "caniuse-lite": "^1.0.30001793",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^16.3.1",

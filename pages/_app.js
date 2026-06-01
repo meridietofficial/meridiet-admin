@@ -1,7 +1,7 @@
 import "../src/globals.css";
 import store from "../src/store/auth.js";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { SSRProvider, ThemeProvider } from "react-bootstrap";
+import { ThemeProvider } from "react-bootstrap";
 import { Provider } from "react-redux";
 import { UserAuthContextProvider } from "../src/firebase/auth/UserAuthContext";
 import toast, { Toaster } from "react-hot-toast";
@@ -19,7 +19,6 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <ThemeProvider>
-      <SSRProvider>
         <Provider store={store}>
           <UserAuthContextProvider>
             <LoaderProvider>
@@ -45,7 +44,6 @@ function MyApp({ Component, pageProps }) {
             </LoaderProvider>
           </UserAuthContextProvider>
         </Provider>
-      </SSRProvider>
     </ThemeProvider>
   );
 }

@@ -2,12 +2,7 @@ import { useState } from "react";
 import API from "../../helpers/api";
 import toast from "react-hot-toast";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-
-const FieldLabel = ({ children }) => (
-  <label style={{ fontSize: "11px", fontWeight: 700, color: "#aaa", letterSpacing: "0.8px", textTransform: "uppercase", display: "block", marginBottom: "7px" }}>
-    {children}
-  </label>
-);
+import { FieldLabel } from "./FieldLabel";
 
 const PasswordInput = ({ label, value, onChange, show, onToggle, placeholder }) => (
   <div style={{ flex: 1, minWidth: "200px" }}>

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { getLoggedInUser, updateUserData } from "../../helpers/auth";
 import { v4 as uuidv4 } from "uuid";
-import { uploadFileToS3 } from "../../utils/S3";
 import { getAdminProfile, updateAdminProfile } from "../../services/profileService";
 import API, { setAuthorization } from "../../helpers/api";
+import { FieldLabel } from "./FieldLabel";
 
 const SectionCard = ({ icon, title, children }) => (
   <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: "20px", overflow: "hidden" }}>
@@ -18,12 +18,6 @@ const SectionCard = ({ icon, title, children }) => (
   </div>
 );
 
-const FieldLabel = ({ children }) => (
-  <label style={{ fontSize: "11px", fontWeight: 700, color: "#aaa", letterSpacing: "0.8px", textTransform: "uppercase", display: "block", marginBottom: "7px" }}>
-    {children}
-  </label>
-);
-
 const inputStyle = {
   height: "44px", borderRadius: "10px", border: "1px solid #e5e5e5",
   padding: "0 14px", fontSize: "14px", color: "#333",
@@ -34,7 +28,6 @@ export default function User() {
   const user = getLoggedInUser();
   const [selectedImage, setSelectedImage] = useState(() => user?.avatar_url || null);
   const fileInputRef = useRef(null);
-  const isImageUploadRef = useRef(false);
 
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState(user?.full_name || "");
@@ -72,41 +65,19 @@ export default function User() {
 
   useEffect(() => { fetchAdminProfile(); }, []);
 
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please select a valid image file"); return; }
-    if (file.size > 15 * 1024 * 1024) { toast.error("Image size must be under 15 MB"); return; }
-    setLoading(true);
-    try {
-      const uniqueFileName = `profile/${uuidv4()}_${file.name}`;
-      const s3Url = await uploadFileToS3(file, uniqueFileName);
-      isImageUploadRef.current = true;
-      setSelectedImage(s3Url);
-      updateUserData({ avatar_url: s3Url });
-      toast.success("Image uploaded successfully");
-    } catch (error) {
-      toast.error(error.message || "Failed to upload image");
-    } finally {
-      setLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const handleUpdate = async () => {
+  const saveProfile = async (avatarUrl) => {
     try {
       setLoading(true);
       const payload = {
         full_name: fullName.trim(),
         phone_code: phoneCode,
         phone_number: phone.trim(),
+        ...(avatarUrl && { avatar_url: avatarUrl }),
       };
-      if (selectedImage) payload.avatar_url = selectedImage;
-
       const response = await updateAdminProfile(payload);
       if (response.success) {
         toast.success(response.message || "Profile updated successfully");
-        updateUserData({ full_name: fullName.trim(), avatar_url: selectedImage || undefined });
+        updateUserData({ full_name: fullName.trim(), ...(avatarUrl && { avatar_url: avatarUrl }) });
         await fetchAdminProfile();
       } else {
         toast.error(response.message || "Failed to update profile");
@@ -118,12 +89,27 @@ export default function User() {
     }
   };
 
-  useEffect(() => {
-    if (selectedImage && isImageUploadRef.current) {
-      handleUpdate();
-      isImageUploadRef.current = false;
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select a valid image file"); return; }
+    if (file.size > 15 * 1024 * 1024) { toast.error("Image size must be under 15 MB"); return; }
+    setLoading(true);
+    try {
+      const uniqueFileName = `profile/${uuidv4()}_${file.name}`;
+      const { uploadFileToS3 } = await import("../../utils/S3");
+      const s3Url = await uploadFileToS3(file, uniqueFileName);
+      setSelectedImage(s3Url);
+      updateUserData({ avatar_url: s3Url });
+      toast.success("Image uploaded successfully");
+      await saveProfile(s3Url);
+    } catch (error) {
+      toast.error(error.message || "Failed to upload image");
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  }, [selectedImage]);
+  };
 
   const handleSendOtp = async () => {
     if (!newEmail.trim()) { toast.error("Please enter a new email address."); return; }
@@ -270,7 +256,7 @@ export default function User() {
 
       {/* Save */}
       <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "4px" }}>
-        <button onClick={handleUpdate} disabled={loading}
+        <button onClick={() => saveProfile(selectedImage)} disabled={loading}
           style={{ height: "44px", padding: "0 28px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1E8E3E, #166C31)", color: "#fff", fontSize: "13px", fontWeight: 700, cursor: "pointer", letterSpacing: "0.5px", boxShadow: "0 4px 14px rgba(30,142,62,0.3)", opacity: loading ? 0.7 : 1 }}>
           {loading ? "SAVING..." : "SAVE CHANGES"}
         </button>
