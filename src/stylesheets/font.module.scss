@@ -1,0 +1,96 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+Devanagari:wght@100;200;300;400;500;600;700&display=swap");
+@font-face {
+  font-family: 'SF Pro';
+  src: url('https://sf.abarba.me/SF-Pro.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+.formControl {
+  border-radius: 10px;
+  height: 50px;
+  width: 100%;
+  max-width: 796px;
+  background-color: var(--theme-bg-secondary);
+
+  color: var(--theme-text-secondary) !important;
+  border: none !important;
+}
+.formControl:focus{
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+}
+.formControl::placeholder{
+    color: var(--theme-text-primary);
+}
+.formControl1 {
+  border-radius: 10px;
+  height: 50px;
+  width: 100%;
+  // max-width: 796px;
+}
+
+.loginBtn {
+  background: var(--theme-primary);
+  width: 100%;
+  border-radius: 12px;
+  border: none !important;
+  height: 50px;
+}
+
+.font14 {
+  font-family: 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0%;
+  color: var(--theme-text-primary);
+}
+
+.font14Light {
+  font-family: 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0%;
+  color: var(--theme-text-light);
+}
+
+.font12 {
+  font-family: 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.font16 {
+  font-family: 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0%;
+  color: var(--theme-text-primary);
+}
+
+.yellowBtn {
+  background: var(--theme-primary);
+  width: 100%;
+  height: 40px;
+  border: none;
+  color: var(--theme-text-primary);
+}
+.yellowBtn:hover {
+  background: var(--theme-primary-hover);
+}
+
+.dltBtn {
+  border: 1px solid var(--theme-danger);
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-danger);
+}
+
+.logoutBtn {
+  background: var(--theme-danger);
+  border-radius: 5px;
+  border: none;
+}
+.logoutBtn:hover {
+  background: var(--theme-danger);
+}
