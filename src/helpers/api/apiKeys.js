@@ -12,6 +12,10 @@ const apiKeys = {
   toggleDietitianStatus: "admin/toggle-block-dietitian",
   deleteDietitian: "admin/delete-dietitian",
 
+  //diet chart requests
+  dietFormRequests: "admin/diet-form-requests",
+  dietFormPreview: "admin/diet-form-requests", // usage: apiGet("dietFormPreview", `/${id}/preview`)
+
   //user management
   existingUserList: "admin/existing-users",
   changeUserStatus: "admin/toggle-block-user",

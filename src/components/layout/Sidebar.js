@@ -3,7 +3,7 @@ import { Nav } from "react-bootstrap";
 import { useRouter } from "next/router";
 import styles from "../../stylesheets/layout.module.scss";
 import Logout from "../auth/Logout";
-import { LuLayoutDashboard, LuUsers, LuSettings2, LuLogOut, LuStethoscope, LuClipboardList } from "react-icons/lu";
+import { LuLayoutDashboard, LuUsers, LuSettings2, LuLogOut, LuStethoscope, LuClipboardList, LuSalad } from "react-icons/lu";
 import { useLoader } from "../../constants/LoaderContext";
 import { getLoggedInUser } from "../../helpers/auth";
 import { motion } from "framer-motion";
@@ -41,6 +41,7 @@ const Sidebar = ({ onNavClick }) => {
     { href: "/dashboard", icon: LuLayoutDashboard, label: "Dashboard" },
     { href: "/dashboard/user-management", icon: LuUsers, label: "User Management" },
     { href: "/dashboard/dietitian-requests", icon: LuClipboardList, label: "Dietitian Requests" },
+    { href: "/dashboard/diet-chart-requests", icon: LuSalad, label: "Diet Chart Requests" },
     { href: "/dashboard/dietitian-management", icon: LuStethoscope, label: "Dietitians" },
     { href: "/dashboard/setting", icon: LuSettings2, label: "Settings" },
   ];

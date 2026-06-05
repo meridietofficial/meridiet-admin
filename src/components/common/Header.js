@@ -41,7 +41,7 @@ function Header() {
             <Image
               src="/images/meridiet-logo.png"
               alt="MeriDiet"
-              style={{ height: "44px", width: "auto", objectFit: "contain" }}
+              style={{ height: "34px", width: "auto", objectFit: "contain" }}
             />
             <span style={{
               borderLeft: "1px solid #E4EAE6",

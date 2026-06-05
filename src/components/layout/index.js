@@ -97,9 +97,9 @@ const Layout = ({ children }) => {
         /* Sidebar Container */
         .sidebar-container {
           position: fixed;
-          top: 76px;
+          top: 60px;
           left: 0;
-          height: calc(100vh - 76px);
+          height: calc(100vh - 60px);
           width: 280px;
           background: #ffffff;
           z-index: 100;
@@ -121,7 +121,7 @@ const Layout = ({ children }) => {
         /* Overlay */
         .sidebar-overlay {
           position: fixed;
-          top: 76px;
+          top: 60px;
           left: 0;
           right: 0;
           bottom: 0;
@@ -139,8 +139,8 @@ const Layout = ({ children }) => {
         .main-content {
           flex: 1;
           margin-left: 280px;
-          min-height: calc(100vh - 76px);
-          margin-top: 76px;
+          min-height: calc(100vh - 60px);
+          margin-top: 60px;
           background: var(--dash-bg, #F2F5F3);
           transition: margin-left 0.3s ease;
           overflow-x: hidden;
@@ -152,7 +152,7 @@ const Layout = ({ children }) => {
 
         .content-wrapper {
           padding: 20px;
-          min-height: calc(100vh - 76px);
+          min-height: calc(100vh - 60px);
           overflow-x: hidden;
           display: flex;
           flex-direction: column;

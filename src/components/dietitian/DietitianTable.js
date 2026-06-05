@@ -19,6 +19,13 @@ const formatDate = (iso) => {
   return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
 };
 
+// Normalizes a value that may be an array, a comma string, or null into a clean list
+const toList = (val) => {
+  if (Array.isArray(val)) return val.filter(Boolean);
+  if (typeof val === "string" && val.trim()) return val.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
+};
+
 // apiKey: "dietitianList" | "dietitianRequests"
 // showVerify: true = show Verify button in detail modal
 export default function DietitianTable({ apiKey = "dietitianList", showVerify = false }) {
@@ -126,7 +133,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   };
 
   const emptyLabel = showVerify ? "No pending requests found." : "No approved dietitians found.";
-  const columns = ["#", "Dietitian", "Email", "Phone", "Location", "Specialization", "Experience", "Active", "Actions"];
+  const columns = ["#", "Dietitian", "Contact", "Location", "Specialization", "Experience", "Active", "Actions"];
 
   return (
     <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
@@ -182,7 +189,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
               <thead>
                 <tr>
                   {columns.map((col) => {
-                    const colWidths = { "#": "48px", "Specialization": "130px", "Experience": "110px", "Active": "90px", "Actions": "110px" };
+                    const colWidths = { "#": "48px", "Dietitian": "180px", "Contact": "220px", "Location": "140px", "Specialization": "140px", "Experience": "110px", "Active": "90px", "Actions": "150px" };
                     return (
                       <th key={col} style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "12px", padding: "12px 14px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px", width: colWidths[col] || "auto" }}>{col}</th>
                     );
@@ -204,8 +211,8 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                       {/* Dietitian — avatar + name + joined */}
                       <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          {d.profile_photo ? (
-                            <img src={d.profile_photo} alt={d.full_name} style={{ width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee", flexShrink: 0 }} />
+                          {(d.avatar_url || d.documents?.profile_photo) ? (
+                            <img src={d.avatar_url || d.documents?.profile_photo} alt={d.full_name} style={{ width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee", flexShrink: 0 }} />
                           ) : (
                             <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #1E8E3E, #4ade80)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "14px", flexShrink: 0 }}>
                               {(d.full_name || "D").charAt(0).toUpperCase()}
@@ -218,22 +225,35 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                         </div>
                       </td>
 
-                      {/* Email */}
-                      <td style={{ padding: "10px 14px", fontSize: "12px", color: "#3b82f6", fontWeight: 500, verticalAlign: "middle" }}>{d.email || "—"}</td>
-
-                      {/* Phone */}
-                      <td style={{ padding: "10px 14px", fontSize: "12px", color: "#555", verticalAlign: "middle", whiteSpace: "nowrap" }}>{d.phone_number ? `${d.phone_code || ""} ${d.phone_number}`.trim() : "—"}</td>
+                      {/* Contact — email (top) + phone (bottom) */}
+                      <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                          <span style={{ fontSize: "12px", color: "#3b82f6", fontWeight: 500, wordBreak: "break-all" }}>{d.email || "—"}</span>
+                          <span style={{ fontSize: "12px", color: "#555", whiteSpace: "nowrap" }}>{d.phone_number ? `${d.phone_code || ""} ${d.phone_number}`.trim() : "—"}</span>
+                        </div>
+                      </td>
 
                       {/* Location */}
-                      <td style={{ padding: "10px 14px", fontSize: "12px", color: "#555", verticalAlign: "middle" }}>{[d.city, d.state].filter(Boolean).join(", ") || "—"}</td>
+                      <td style={{ padding: "10px 14px", fontSize: "12px", color: "#555", verticalAlign: "middle", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={[d.city, d.state].filter(Boolean).join(", ")}>{[d.city, d.state].filter(Boolean).join(", ") || "—"}</td>
 
                       {/* Specialization */}
-                      <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
-                        <span style={{ background: "#f0faf8", color: "#0d9488", border: "1px solid rgba(13,148,136,0.2)", borderRadius: "20px", padding: "3px 9px", fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap" }}>{d.specialization || "N/A"}</span>
+                      <td style={{ padding: "10px 14px", verticalAlign: "middle", overflow: "hidden" }}>
+                        {(() => {
+                          const specs = toList(d.specialization);
+                          if (!specs.length) return <span style={{ color: "#aaa", fontSize: "11px" }}>N/A</span>;
+                          return (
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px" }} title={specs.join(", ")}>
+                              <span style={{ background: "#f0faf8", color: "#0d9488", border: "1px solid rgba(13,148,136,0.2)", borderRadius: "20px", padding: "3px 9px", fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100px" }}>{specs[0]}</span>
+                              {specs.length > 1 && (
+                                <span style={{ background: "#f1f5f9", color: "#64748b", borderRadius: "20px", padding: "3px 8px", fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>+{specs.length - 1}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Experience */}
-                      <td style={{ padding: "10px 14px", fontSize: "11px", color: "#666", verticalAlign: "middle" }}>{d.experience || "—"}</td>
+                      <td style={{ padding: "10px 14px", fontSize: "11px", color: "#666", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={d.experience || ""}>{d.experience || "—"}</td>
 
 
                       {/* Active */}
@@ -350,8 +370,8 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
               <div>
                 {/* Header card */}
                 <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: "18px" }}>
-                  {d.profile_photo ? (
-                    <img src={d.profile_photo} alt={d.full_name} style={{ width: "72px", height: "72px", borderRadius: "50%", objectFit: "cover", border: "3px solid #edf1ee" }} />
+                  {(d.avatar_url || d.documents?.profile_photo) ? (
+                    <img src={d.avatar_url || d.documents?.profile_photo} alt={d.full_name} style={{ width: "72px", height: "72px", borderRadius: "50%", objectFit: "cover", border: "3px solid #edf1ee" }} />
                   ) : (
                     <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "linear-gradient(135deg, #1E8E3E, #4ade80)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "26px", flexShrink: 0 }}>
                       {(d.full_name || "D").charAt(0).toUpperCase()}
@@ -379,12 +399,14 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                   <div className="row g-3">
                     {[
                       { label: "Phone", value: `${d.phone_code || ""} ${d.phone_number || ""}`.trim() || "N/A" },
+                      { label: "Gender", value: d.gender },
+                      { label: "Date of Birth", value: d.date_of_birth ? formatDate(d.date_of_birth) : null },
                       { label: "City", value: d.city },
                       { label: "State", value: d.state },
-                      { label: "Specialization", value: d.specialization },
+                      { label: "Specialization", value: toList(d.specialization).join(", ") },
                       { label: "Experience", value: d.experience },
-                      { label: "Highest Degree", value: d.highest_degree },
                       { label: "Registration No.", value: d.registration_number },
+                      { label: "Online", value: d.is_online ? "Online" : "Offline" },
                       { label: "Submitted", value: formatDate(d.created_at) },
                     ].map(({ label, value }) => (
                       <div className="col-md-6" key={label}>
@@ -395,16 +417,100 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                       </div>
                     ))}
                   </div>
+                  {d.bio && (
+                    <div style={{ background: "#fafcfa", borderRadius: "10px", padding: "10px 14px", marginTop: "12px" }}>
+                      <small style={{ color: "#aaa", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Bio</small>
+                      <p style={{ margin: 0, fontWeight: 500, color: "#374151", fontSize: "13px", marginTop: "2px" }}>{d.bio}</p>
+                    </div>
+                  )}
                 </div>
+
+                {/* Skills & Services */}
+                {(toList(d.specialization).length > 0 || toList(d.languages).length > 0 || toList(d.services).length > 0) && (
+                  <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <h6 style={{ fontWeight: 700, color: "#1E8E3E", marginBottom: "14px", paddingBottom: "8px", borderBottom: "1px solid #edf1ee" }}>Skills & Services</h6>
+                    {[
+                      { label: "Specialization", items: toList(d.specialization), color: "#0d9488", bg: "#f0faf8", border: "rgba(13,148,136,0.2)" },
+                      { label: "Languages", items: toList(d.languages), color: "#7c3aed", bg: "#f5f3ff", border: "rgba(124,58,237,0.2)" },
+                      { label: "Services", items: toList(d.services), color: "#2563eb", bg: "#eff6ff", border: "rgba(37,99,235,0.2)" },
+                    ].map(({ label, items, color, bg, border }) => (
+                      <div key={label} style={{ marginBottom: "12px" }}>
+                        <small style={{ color: "#aaa", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</small>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "5px" }}>
+                          {items.length ? items.map((it, idx) => (
+                            <span key={idx} style={{ background: bg, color, border: `1px solid ${border}`, borderRadius: "20px", padding: "3px 11px", fontSize: "12px", fontWeight: 600 }}>{it}</span>
+                          )) : <span style={{ color: "#bbb", fontSize: "12px" }}>None</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Degrees & Awards */}
+                {(toList(d.degrees).length > 0 || toList(d.awards).length > 0) && (
+                  <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <h6 style={{ fontWeight: 700, color: "#1E8E3E", marginBottom: "14px", paddingBottom: "8px", borderBottom: "1px solid #edf1ee" }}>Education & Awards</h6>
+                    {toList(d.degrees).length > 0 && (
+                      <div style={{ marginBottom: toList(d.awards).length ? "14px" : 0 }}>
+                        <small style={{ color: "#aaa", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Degrees</small>
+                        {toList(d.degrees).map((deg, idx) => (
+                          <div key={idx} style={{ background: "#fafcfa", borderRadius: "10px", padding: "10px 14px", marginTop: "6px" }}>
+                            <p style={{ margin: 0, fontWeight: 700, color: "#111827", fontSize: "13px" }}>{deg.degree || "N/A"}</p>
+                            <p style={{ margin: "2px 0 0", color: "#888", fontSize: "12px" }}>
+                              {[deg.institute, deg.year].filter(Boolean).join(" • ") || "—"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {toList(d.awards).length > 0 && (
+                      <div>
+                        <small style={{ color: "#aaa", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Awards</small>
+                        {toList(d.awards).map((aw, idx) => (
+                          <div key={idx} style={{ background: "#fafcfa", borderRadius: "10px", padding: "10px 14px", marginTop: "6px" }}>
+                            <p style={{ margin: 0, fontWeight: 700, color: "#111827", fontSize: "13px" }}>🏆 {aw.title || "N/A"}</p>
+                            <p style={{ margin: "2px 0 0", color: "#888", fontSize: "12px" }}>
+                              {[aw.organization, aw.year].filter(Boolean).join(" • ") || "—"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Availability */}
+                {d.availability && Object.keys(d.availability).length > 0 && (
+                  <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <h6 style={{ fontWeight: 700, color: "#1E8E3E", marginBottom: "14px", paddingBottom: "8px", borderBottom: "1px solid #edf1ee" }}>Availability</h6>
+                    <div className="row g-2">
+                      {["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => {
+                        const slots = d.availability[day];
+                        return (
+                          <div className="col-md-6" key={day}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#fafcfa", borderRadius: "10px", padding: "8px 12px" }}>
+                              <span style={{ textTransform: "uppercase", fontSize: "11px", fontWeight: 700, color: "#1E8E3E", minWidth: "34px" }}>{day}</span>
+                              <span style={{ fontSize: "12px", color: slots?.length ? "#374151" : "#bbb", fontWeight: 500 }}>
+                                {slots?.length ? slots.join(", ") : "Unavailable"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Documents */}
                 <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                   <h6 style={{ fontWeight: 700, color: "#1E8E3E", marginBottom: "14px", paddingBottom: "8px", borderBottom: "1px solid #edf1ee" }}>Uploaded Documents</h6>
                   <div className="row g-3">
                     {[
-                      { label: "Degree Certificate", url: d.degree_certificate },
-                      { label: "Registration Certificate", url: d.registration_certificate },
-                      { label: "ID Proof", url: d.id_proof },
+                      { label: "Profile Photo", url: d.documents?.profile_photo },
+                      { label: "Degree Certificate", url: d.documents?.degree_certificate },
+                      { label: "Registration Certificate", url: d.documents?.registration_certificate },
+                      { label: "ID Proof", url: d.documents?.id_proof },
+                      { label: "Experience Certificate", url: d.documents?.experience_certificate },
                     ].map(({ label, url }) => (
                       <div className="col-md-4" key={label}>
                         <div style={{ background: "#fafcfa", borderRadius: "10px", padding: "14px", textAlign: "center" }}>
