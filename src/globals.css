@@ -1,40 +1,7 @@
-/* Avenir LT Std — place font files in /public/fonts/ */
-@font-face {
-  font-family: 'Avenir LT Std';
-  src: url('/fonts/AvenirLTStd-Roman.woff2') format('woff2'),
-       url('/fonts/AvenirLTStd-Roman.woff') format('woff'),
-       url('/fonts/AvenirLTStd-Roman.otf') format('opentype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Avenir LT Std';
-  src: url('/fonts/AvenirLTStd-Medium.woff2') format('woff2'),
-       url('/fonts/AvenirLTStd-Medium.woff') format('woff'),
-       url('/fonts/AvenirLTStd-Medium.otf') format('opentype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Avenir LT Std';
-  src: url('/fonts/AvenirLTStd-Heavy.woff2') format('woff2'),
-       url('/fonts/AvenirLTStd-Heavy.woff') format('woff'),
-       url('/fonts/AvenirLTStd-Heavy.otf') format('opentype');
-  font-weight: 600 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Avenir LT Std';
-  src: url('/fonts/AvenirLTStd-Black.woff2') format('woff2'),
-       url('/fonts/AvenirLTStd-Black.woff') format('woff'),
-       url('/fonts/AvenirLTStd-Black.otf') format('opentype');
-  font-weight: 800 900;
-  font-style: normal;
-  font-display: swap;
-}
+/* The UI uses the 'Avenir LT Std' font stack with graceful fallbacks
+   ('Avenir', 'Century Gothic', Trebuchet MS, sans-serif). To enable the
+   actual Avenir LT Std webfont, drop the font files into /public/fonts/ and
+   re-add the matching @font-face rules here. */
 
 html,
 body {

@@ -11,6 +11,14 @@ export default defineConfig({
       "/api/upload-image": "http://localhost:5050",
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // Use Sass's modern compiler API (silences the legacy-js-api warning).
+        api: "modern-compiler",
+      },
+    },
+  },
   optimizeDeps: {
     esbuildOptions: {
       loader: {
