@@ -1,4 +1,4 @@
-import DietRequestTable from "../../src/components/diet-requests/DietRequestTable";
+import DietRequestTable from "../../components/diet-requests/DietRequestTable";
 
 const DietChartRequests = () => {
   return (

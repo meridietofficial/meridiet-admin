@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button, Form } from "react-bootstrap";
 import API from "../../helpers/api";
 import toast from "react-hot-toast";
-import { useRouter } from "next/router";
+import { useRouter } from "../../helpers/useRouter";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import { FiMail, FiLock } from "react-icons/fi";
 import OtpInput from "react-otp-input";
@@ -317,7 +317,7 @@ export default function ForgotPassword() {
         </div>
       </div>
 
-      <style jsx global>{`
+      <style>{`
         .form-control:focus {
           border-color: transparent !important;
           box-shadow: none !important;

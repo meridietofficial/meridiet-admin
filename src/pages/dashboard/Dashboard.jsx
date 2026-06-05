@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import API from "../../src/helpers/api";
+import API from "../../helpers/api";
 
 const statCards = [
   {
@@ -189,7 +189,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <style jsx global>{`
+      <style>{`
         .dash-stats-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);

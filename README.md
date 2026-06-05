@@ -4,11 +4,11 @@ Admin portal for the MeriDiet platform — manage users, dietitians, and platfor
 
 ## Tech Stack
 
-- **Framework:** Next.js 13 (Pages Router)
+- **Framework:** Vite + React 18 (SPA, React Router)
 - **UI:** React Bootstrap, Framer Motion, React Icons
 - **State:** Redux
 - **Auth:** JWT (stored in localStorage)
-- **Storage:** AWS S3
+- **Storage:** AWS S3 (via the small Express upload server)
 - **Notifications:** React Hot Toast
 
 ## Getting Started
@@ -21,33 +21,37 @@ Admin portal for the MeriDiet platform — manage users, dietitians, and platfor
 ### Installation
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 ```
 
 ### Development
 
 ```bash
-npm run dev
+npm run dev      # Vite dev server  → http://localhost:3000
+npm run server   # Express upload server (only needed for profile-image uploads)
 ```
 
-App runs at `http://localhost:3000`
+The Vite dev server proxies `POST /api/upload-image` to the Express server
+(`http://localhost:5050`), which performs the server-side S3 upload that can't
+run in the browser. All other API calls go directly to the backend configured
+in `src/helpers/api/instance.js`.
 
 ### Production Build
 
 ```bash
-npm run build
-npm run start
+npm run build    # outputs to dist/
+npm run preview  # preview the production build locally
 ```
+
+Serve the `dist/` folder with any static host. Run `npm run server` alongside it
+(or deploy it separately) so image uploads keep working.
 
 ## Environment Variables
 
-Create a `.env` file in the root:
+Create a `.env` file in the root (read by the Express upload server):
 
 ```env
-NEXT_PUBLIC_AWS_ACCESS_KEY=your_aws_access_key
-NEXT_PUBLIC_AWS_SECRET_KEY=your_aws_secret_key
-NEXT_PUBLIC_AWS_REGION=your_aws_region
-NEXT_PUBLIC_AWS_S3_BUCKET=your_s3_bucket_name
+AWS_REVEAL_SECRET=your_aws_reveal_secret
 ```
 
 ## API Configuration
@@ -69,16 +73,17 @@ Base URL is set in `src/helpers/api/instance.js`. All API keys/endpoints are cen
 ## Project Structure
 
 ```
-├── pages/
-│   ├── index.js                  # Login page
-│   ├── forgot-password.js
-│   └── dashboard/
-│       ├── index.js              # Dashboard
-│       ├── user-management.js
-│       ├── dietitian-requests.js
-│       ├── dietitian-management.js
-│       └── setting.js
+├── index.html                    # Vite entry HTML
+├── vite.config.js                # Vite config (React plugin + /api proxy)
+├── server/
+│   └── index.js                  # Express server for S3 image uploads
 ├── src/
+│   ├── main.jsx                  # App entry (mounts React + BrowserRouter)
+│   ├── App.jsx                   # Providers + React Router routes
+│   ├── pages/                    # Route components
+│   │   ├── Home.jsx              # Login page  (/)
+│   │   ├── ForgotPasswordPage.jsx
+│   │   └── dashboard/            # Dashboard, UserManagement, DietPlan, ...
 │   ├── components/
 │   │   ├── auth/                 # Login, ForgotPassword
 │   │   ├── common/               # Header, Footer, Loader

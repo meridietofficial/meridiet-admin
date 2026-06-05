@@ -89,7 +89,7 @@ function Header() {
         </Container>
       </Navbar>
 
-      <style jsx global>{`
+      <style>{`
         .header-logo-ring {
           width: 46px;
           height: 46px;

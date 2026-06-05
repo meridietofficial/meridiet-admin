@@ -1,4 +1,4 @@
-import Settings from "../../src/components/profile";
+import Settings from "../../components/profile";
 
 const Setting = () => {
   return (

@@ -1,20 +1,21 @@
+// Small Express backend that replaces the old Next.js API route
+// (pages/api/upload-image.js). It performs the server-side S3 upload that
+// cannot run in the browser. In dev, Vite proxies /api/upload-image here
+// (see vite.config.js). Run it with `npm run server`.
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "16mb",
-    },
-  },
-};
+dotenv.config();
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "16mb" }));
 
+app.post("/api/upload-image", async (req, res) => {
   const { fileData, fileType, fileName } = req.body;
   if (!fileData || !fileType || !fileName) {
     return res.status(400).json({ error: "Missing file data" });
@@ -55,4 +56,9 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({ error: error.message || "Upload failed" });
   }
-}
+});
+
+const PORT = process.env.UPLOAD_SERVER_PORT || 5050;
+app.listen(PORT, () => {
+  console.log(`> Upload server ready on http://localhost:${PORT}`);
+});

@@ -63,7 +63,7 @@ const Layout = ({ children }) => {
         </div>
       </div>
 
-      <style jsx global>{`
+      <style>{`
         .layout-wrapper {
           display: flex;
           min-height: 100vh;

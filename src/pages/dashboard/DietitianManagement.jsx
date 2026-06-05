@@ -1,4 +1,4 @@
-import DietitianTable from "../../src/components/dietitian/DietitianTable";
+import DietitianTable from "../../components/dietitian/DietitianTable";
 
 const DietitianManagement = () => {
   return (

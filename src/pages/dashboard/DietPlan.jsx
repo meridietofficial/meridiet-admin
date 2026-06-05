@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "../../helpers/useRouter";
 import { LuArrowLeft, LuDownload } from "react-icons/lu";
 import toast from "react-hot-toast";
-import API, { setAuthorization } from "../../../src/helpers/api";
-import DietPlanDocument, { PAGE_W } from "../../../src/components/diet-plan/DietPlanDocument";
+import API, { setAuthorization } from "../../helpers/api";
+import DietPlanDocument, { PAGE_W } from "../../components/diet-plan/DietPlanDocument";
 
 export default function DietPlanPage() {
   const router = useRouter();

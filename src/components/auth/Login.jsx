@@ -3,7 +3,7 @@ import { Button, Form } from "react-bootstrap";
 import API from "../../helpers/api";
 import toast from "react-hot-toast";
 import * as auth from "../../helpers/auth";
-import { useRouter } from "next/router";
+import { useRouter } from "../../helpers/useRouter";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import { useLoader } from "../../constants/LoaderContext";
 import { motion } from "framer-motion";
@@ -379,7 +379,7 @@ export default function Login() {
       </div>
 
       {/* Global style overrides */}
-      <style jsx global>{`
+      <style>{`
         .form-control:focus {
           border-color: transparent !important;
           box-shadow: none !important;

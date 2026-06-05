@@ -1,6 +1,6 @@
 import { Modal, Button, Image } from "react-bootstrap";
 import font from "../../stylesheets/font.module.scss";
-import { useRouter } from "next/router";
+import { useRouter } from "../../helpers/useRouter";
 function Logout({ show, handleClose }) {
   const router = useRouter();
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Nav } from "react-bootstrap";
-import { useRouter } from "next/router";
+import { useRouter } from "../../helpers/useRouter";
 import styles from "../../stylesheets/layout.module.scss";
 import Logout from "../auth/Logout";
 import { LuLayoutDashboard, LuUsers, LuSettings2, LuLogOut, LuStethoscope, LuClipboardList, LuSalad } from "react-icons/lu";

@@ -1,4 +1,4 @@
-import UserMgmt from "../../src/components/user";
+import UserMgmt from "../../components/user";
 
 const UserManagement = () => {
   return (

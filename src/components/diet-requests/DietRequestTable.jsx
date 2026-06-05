@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "../../helpers/useRouter";
 import { Table, FormControl, Modal, Button } from "react-bootstrap";
 import { FaSort, FaChevronDown, FaEye } from "react-icons/fa";
 import { LuSalad } from "react-icons/lu";

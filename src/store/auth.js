@@ -8,7 +8,7 @@ import reducers from './reducers/index';
 // const devTools = window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__(); //  "redux-devtools-extension": "^2.13.9"
 let composeEnhancers = compose;
 // to show store on redux extensions
-if (process.env.NODE_ENV !== 'production' && typeof window === 'object') {
+if (!import.meta.env.PROD && typeof window === 'object') {
     /* eslint-disable no-underscore-dangle */
     if (window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({});
 }
