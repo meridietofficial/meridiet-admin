@@ -20,9 +20,12 @@ export const decodeData = (token) => {
   }
 };
 
-export function login(token, data,user, appId = "") {
+export function login(token, refreshToken, user, appId = "") {
   localStorage.setItem("accessToken", token);
-  localStorage.setItem("userData", JSON.stringify(user)); 
+  if (refreshToken) {
+    localStorage.setItem("refreshToken", refreshToken);
+  }
+  localStorage.setItem("userData", JSON.stringify(user));
 
   setAuthorization();
   return true;
@@ -58,6 +61,7 @@ export function updateUserData(updatedFields) {
 
 export function logout() {
   localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
 
   setAuthorization();
   window.location.href = `${window.location.origin}/`;

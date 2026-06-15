@@ -1,5 +1,6 @@
 const apiKeys = {
   login: "admin/login",
+  refreshToken: "admin/refresh-token",
   sendOTP: "admin/request-otp",
   verifyOTP:"admin/verify-otp",
   updatePassword: "admin/reset-password",

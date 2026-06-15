@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "../../helpers/useRouter";
 import { LuArrowLeft, LuDownload } from "react-icons/lu";
 import toast from "react-hot-toast";
@@ -17,7 +17,6 @@ export default function DietPlanPage() {
   const docRef = useRef(null); // natural-size (794px) document
   const [scale, setScale] = useState(1);
   const [docH, setDocH] = useState(0);
-  const [padLeft, setPadLeft] = useState(0);
 
   // ── fetch plan ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -37,17 +36,26 @@ export default function DietPlanPage() {
   // ── responsive scaling of the fixed 794px document ──────────────────────
   const measure = useCallback(() => {
     const avail = wrapRef.current?.clientWidth || PAGE_W;
-    const sc = Math.min(1, avail / PAGE_W);
-    setScale(sc);
-    setPadLeft(Math.max(0, (avail - PAGE_W * sc) / 2));
+    setScale(Math.min(1, avail / PAGE_W));
     if (docRef.current) setDocH(docRef.current.scrollHeight);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     measure();
-    const t = setTimeout(measure, 150); // after fonts/layout settle
+    const t = setTimeout(measure, 200); // after fonts settle
     window.addEventListener("resize", measure);
-    return () => { clearTimeout(t); window.removeEventListener("resize", measure); };
+    // Re-measure whenever the document's own height changes (images / fonts
+    // finishing loading) so the scaled preview is never clipped or mis-sized.
+    let ro;
+    if (docRef.current && "ResizeObserver" in window) {
+      ro = new ResizeObserver(() => measure());
+      ro.observe(docRef.current);
+    }
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", measure);
+      if (ro) ro.disconnect();
+    };
   }, [plan, measure]);
 
   // ── one-click PDF (image-based, pixel-identical to the on-screen design) ──
@@ -77,6 +85,18 @@ export default function DietPlanPage() {
         const img = canvas.toDataURL("image/jpeg", 0.92);
         if (i > 0) pdf.addPage();
         pdf.addImage(img, "JPEG", 0, 0, W, H, undefined, "FAST");
+
+        // The page is captured as a flat image, so add real clickable link
+        // annotations on top of any [data-pdf-link] elements (email / phone / website).
+        const pageRect = pages[i].getBoundingClientRect();
+        const sx = W / pageRect.width;
+        const sy = H / pageRect.height;
+        pages[i].querySelectorAll("[data-pdf-link]").forEach((el) => {
+          const url = el.getAttribute("href");
+          if (!url) return;
+          const r = el.getBoundingClientRect();
+          pdf.link((r.left - pageRect.left) * sx, (r.top - pageRect.top) * sy, r.width * sx, r.height * sy, { url });
+        });
       }
       const name = (plan?.summary?.client_name || "client").toString().replace(/\s+/g, "-");
       pdf.save(`MeriDiet-Plan-${name}-${id}.pdf`);
@@ -110,7 +130,7 @@ export default function DietPlanPage() {
       </div>
 
       {/* Viewer */}
-      <div ref={wrapRef} style={{ width: "100%", overflowX: "auto" }}>
+      <div ref={wrapRef} style={{ width: "100%", overflow: "hidden" }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: "100px 20px" }}>
             <div className="spinner-border" style={{ color: "#1E8E3E", width: "2.5rem", height: "2.5rem" }} role="status" />
@@ -123,8 +143,8 @@ export default function DietPlanPage() {
             <p style={{ fontSize: 14 }}>We couldn't load this plan. Please go back and try again.</p>
           </div>
         ) : (
-          <div style={{ height: docH ? docH * scale : "auto", paddingLeft: padLeft }}>
-            <div ref={docRef} style={{ width: PAGE_W, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          <div style={{ width: PAGE_W * scale, height: docH ? docH * scale : "auto", margin: "0 auto", position: "relative", overflow: "hidden" }}>
+            <div ref={docRef} style={{ width: PAGE_W, transform: `scale(${scale})`, transformOrigin: "top left", position: "absolute", top: 0, left: 0 }}>
               <DietPlanDocument plan={plan} />
             </div>
           </div>
