@@ -25,7 +25,7 @@ function Footer() {
           style={{ height: "36px", width: "auto", objectFit: "contain" }}
         />
         <p className={`${font.font12} text-center text-md-end mb-0`}>
-          © 2025 MeriDiet. All Rights Reserved.
+          © 2026 MeriDiet. All Rights Reserved.
         </p>
       </div>
     </Container>

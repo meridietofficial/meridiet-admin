@@ -16,6 +16,13 @@ const apiKeys = {
   //diet chart requests
   dietFormRequests: "admin/diet-form-requests",
   dietFormPreview: "admin/diet-form-requests", // usage: apiGet("dietFormPreview", `/${id}/preview`)
+  paidDietCharts: "admin/paid-diet-charts",
+
+  dashboardStats: "admin/dashboard-stats",
+  dashboardRevenue: "admin/dashboard-revenue",
+  dashboardUserGrowth: "admin/dashboard-user-growth",
+  dashboardConsultations: "admin/dashboard-consultations",
+  systemOverview: "admin/system-overview",
 
   //user management
   existingUserList: "admin/existing-users",

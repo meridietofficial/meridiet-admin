@@ -65,29 +65,6 @@ const Sidebar = ({ onNavClick }) => {
   return (
     <Nav className={`${styles.sidebarBox} flex-column`}>
 
-      {/* User welcome card */}
-      <div className={styles.sidebarUserCard}>
-        {profilePic ? (
-          <img
-            src={profilePic}
-            alt="Admin"
-            className={styles.sidebarAvatarImg}
-          />
-        ) : (
-          <div className={styles.sidebarAvatar}>
-            {initial}
-          </div>
-        )}
-        <div className={styles.sidebarUserInfo}>
-          <p className={styles.sidebarUserName}>{adminName}</p>
-          <p className={styles.sidebarUserRole}>Administrator</p>
-        </div>
-        <div className={styles.sidebarOnlineDot} />
-      </div>
-
-      {/* Divider */}
-      <div className={styles.sidebarDivider} />
-
       {/* Nav label */}
       <p className={styles.sidebarNavLabel}>NAVIGATION</p>
 

@@ -278,7 +278,7 @@ export default function DietRequestTable() {
         </>
       ) : (
         <div style={{ textAlign: "center", padding: "60px 20px", borderRadius: "12px", border: "1px solid #edf1ee" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>🥗</div>
+          <div style={{ marginBottom: "16px", display: "flex", justifyContent: "center" }}><LuSalad size={48} color="#c5e3d0" /></div>
           <h5 style={{ fontWeight: 700, color: "#333", marginBottom: "8px" }}>No Diet Chart Requests</h5>
           <p style={{ fontSize: "14px", color: "#999" }}>{debouncedSearch ? `No results for "${debouncedSearch}"` : "No diet chart requests found."}</p>
         </div>
