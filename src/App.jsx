@@ -20,6 +20,7 @@ import DietitianManagement from "./pages/dashboard/DietitianManagement";
 import DietitianRequests from "./pages/dashboard/DietitianRequests";
 import DietChartRequests from "./pages/dashboard/DietChartRequests";
 import DietPlanPage from "./pages/dashboard/DietPlan";
+import NutritionConfigPage from "./pages/dashboard/NutritionConfig";
 
 const LoaderHandler = () => {
   const { loading } = useLoader();
@@ -60,6 +61,7 @@ function App() {
                 <Route path="dietitian-management" element={<DietitianManagement />} />
                 <Route path="setting" element={<Setting />} />
                 <Route path="diet-plan/:id" element={<DietPlanPage />} />
+                <Route path="nutrition-config" element={<NutritionConfigPage />} />
               </Route>
             </Routes>
 

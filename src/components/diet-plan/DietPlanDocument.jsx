@@ -537,7 +537,7 @@ const WeekPage = ({ week, weekIndex, plan, page }) => {
         <Logo />
         <Chip bg={C.soft} color={C.brand}><span style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}><FaBullseye size={11} /> Goal: {humanize(s.primary_goal)}</span></Chip>
       </div>
-      <Title pre={`WEEK ${week?.week || weekIndex + 1} –`} accent="SAMPLE MEAL PLAN" />
+      <Title pre={`WEEK ${week?.week || weekIndex + 1} –`} accent="MEAL PLAN" />
       <p style={{ fontSize: 12.5, color: C.sub, margin: "2px 0 10px" }}>
         Days {startDay}–{endDay} structured nutrition plan{week?.title ? ` — ${week.title}.` : "."}
       </p>
