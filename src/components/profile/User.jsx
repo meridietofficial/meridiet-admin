@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { getLoggedInUser, updateUserData } from "../../helpers/auth";
 import { v4 as uuidv4 } from "uuid";
 import { getAdminProfile, updateAdminProfile } from "../../services/profileService";
-import API, { setAuthorization } from "../../helpers/api";
+import API from "../../helpers/api";
 import { FieldLabel } from "./FieldLabel";
 
 const SectionCard = ({ icon, title, children }) => (
@@ -46,7 +46,6 @@ export default function User() {
   const fetchAdminProfile = async () => {
     try {
       setLoading(true);
-      setAuthorization();
       const response = await getAdminProfile();
       if (response.success && response.data) {
         const d = response.data;

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react
 import { useRouter } from "../../helpers/useRouter";
 import { LuArrowLeft, LuDownload } from "react-icons/lu";
 import toast from "react-hot-toast";
-import API, { setAuthorization } from "../../helpers/api";
+import API from "../../helpers/api";
 import DietPlanDocument, { PAGE_W } from "../../components/diet-plan/DietPlanDocument";
 
 export default function DietPlanPage() {
@@ -21,7 +21,6 @@ export default function DietPlanPage() {
   // ── fetch plan ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!id) return;
-    setAuthorization();
     setLoading(true);
     API.apiGet("dietFormPreview", `/${id}/preview`)
       .then((res) => {

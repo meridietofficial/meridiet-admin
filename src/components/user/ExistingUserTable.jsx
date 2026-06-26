@@ -3,7 +3,7 @@ import { Table, FormControl, Modal, Button } from "react-bootstrap";
 import { FaSort, FaChevronDown, FaEye, FaFileExcel, FaCalendarAlt, FaFilter } from "react-icons/fa";
 import { MdBlock, MdCheckCircle, MdDelete, MdPersonOff, MdClose } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
-import API, { setAuthorization } from "../../helpers/api";
+import API from "../../helpers/api";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 
@@ -103,7 +103,6 @@ export default function ExistingUserTable({ onStatsChange }) {
   };
 
   const fetchUsers = () => {
-    setAuthorization();
     setLoading(true);
     API.apiGet("existingUserList", `?${buildParams()}`)
       .then((res) => {
@@ -117,12 +116,8 @@ export default function ExistingUserTable({ onStatsChange }) {
 
   const fetchStats = () => {
     if (!onStatsChange) return;
-    setAuthorization();
-
-    // Reset to loading state
     onStatsChange({ total: null, active: null, blocked: null });
 
-    // Build base params: only search + date range (no status, no sort)
     const base = new URLSearchParams();
     if (debouncedSearch) base.append("search", debouncedSearch);
     if (startDate) base.append("startDate", startDate);
@@ -130,24 +125,15 @@ export default function ExistingUserTable({ onStatsChange }) {
     base.append("page", "1");
     base.append("limit", "1");
 
-    // Total users (no status filter)
-    API.apiGet("existingUserList", `?${base.toString()}`)
-      .then((res) => onStatsChange((p) => ({ ...p, total: res?.data?.meta?.total ?? 0 })))
-      .catch(() => onStatsChange((p) => ({ ...p, total: 0 })));
+    const ap = new URLSearchParams(base); ap.append("status", "active");
+    const bp = new URLSearchParams(base); bp.append("status", "blocked");
 
-    // Active users
-    const ap = new URLSearchParams(base);
-    ap.append("status", "active");
-    API.apiGet("existingUserList", `?${ap.toString()}`)
-      .then((res) => onStatsChange((p) => ({ ...p, active: res?.data?.meta?.total ?? 0 })))
-      .catch(() => onStatsChange((p) => ({ ...p, active: 0 })));
-
-    // Blocked users
-    const bp = new URLSearchParams(base);
-    bp.append("status", "blocked");
-    API.apiGet("existingUserList", `?${bp.toString()}`)
-      .then((res) => onStatsChange((p) => ({ ...p, blocked: res?.data?.meta?.total ?? 0 })))
-      .catch(() => onStatsChange((p) => ({ ...p, blocked: 0 })));
+    Promise.all([
+      API.apiGet("existingUserList", `?${ap.toString()}`).then((r) => r?.data?.meta?.total ?? 0).catch(() => 0),
+      API.apiGet("existingUserList", `?${bp.toString()}`).then((r) => r?.data?.meta?.total ?? 0).catch(() => 0),
+    ]).then(([active, blocked]) => {
+      onStatsChange({ total: active + blocked, active, blocked });
+    });
   };
 
   const handleExportExcel = () => {

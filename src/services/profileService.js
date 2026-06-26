@@ -1,8 +1,7 @@
-import API, { setAuthorization } from "../helpers/api";
+import API from "../helpers/api";
 
 export const getAdminProfile = async () => {
   try {
-    setAuthorization();
     const response = await API.apiGet("profile");
     const apiResponse = response.data;
     if (apiResponse.success && apiResponse.data) {

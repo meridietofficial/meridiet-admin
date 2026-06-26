@@ -5,7 +5,7 @@ import { FaSort, FaChevronDown, FaEye, FaFileExcel, FaCalendarAlt, FaFilter } fr
 import { MdClose } from "react-icons/md";
 import { LuSalad } from "react-icons/lu";
 import GlobalPagination from "../common/GlobalPagination";
-import API, { setAuthorization } from "../../helpers/api";
+import API from "../../helpers/api";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 
@@ -140,9 +140,6 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
   // Fetch tab counts once per tab switch
   useEffect(() => { fetchTabCounts(); }, [debouncedSearch, startDate, endDate]);
 
-  // Reset page on tab / filter change
-  useEffect(() => { setCurrentPage(1); }, [activeTab, sortType, planTypeFilter, startDate, endDate]);
-
   // ── Params builder ─────────────────────────────────────────────────────────
 
   const buildParams = (overrides = {}) => {
@@ -172,7 +169,6 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
   // ── Fetch functions ────────────────────────────────────────────────────────
 
   const fetchRequests = () => {
-    setAuthorization();
     setLoading(true);
     API.apiGet(apiKey, `?${buildParams()}`)
       .then((res) => {
@@ -186,7 +182,6 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
 
   const fetchStats = () => {
     if (!onStatsChange) return;
-    setAuthorization();
     onStatsChange({ total: null, basic: null, standard: null, other: null });
 
     const base = new URLSearchParams();
@@ -196,32 +191,20 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
     base.append("page", "1");
     base.append("limit", "1");
 
-    // Total (no plan type filter)
-    API.apiGet(apiKey, `?${base.toString()}`)
-      .then((res) => onStatsChange((p) => ({ ...p, total: res?.data?.meta?.total ?? 0 })))
-      .catch(() => onStatsChange((p) => ({ ...p, total: 0 })));
-
-    // Basic (planType=1)
     const bp1 = new URLSearchParams(base); bp1.append("planType", "1");
-    API.apiGet(apiKey, `?${bp1.toString()}`)
-      .then((res) => onStatsChange((p) => ({ ...p, basic: res?.data?.meta?.total ?? 0 })))
-      .catch(() => onStatsChange((p) => ({ ...p, basic: 0 })));
-
-    // Standard (planType=2)
     const bp2 = new URLSearchParams(base); bp2.append("planType", "2");
-    API.apiGet(apiKey, `?${bp2.toString()}`)
-      .then((res) => onStatsChange((p) => ({ ...p, standard: res?.data?.meta?.total ?? 0 })))
-      .catch(() => onStatsChange((p) => ({ ...p, standard: 0 })));
-
-    // Other/Premium (planType=3)
     const bp3 = new URLSearchParams(base); bp3.append("planType", "3");
-    API.apiGet(apiKey, `?${bp3.toString()}`)
-      .then((res) => onStatsChange((p) => ({ ...p, other: res?.data?.meta?.total ?? 0 })))
-      .catch(() => onStatsChange((p) => ({ ...p, other: 0 })));
+
+    Promise.all([
+      API.apiGet(apiKey, `?${bp1.toString()}`).then((r) => r?.data?.meta?.total ?? 0).catch(() => 0),
+      API.apiGet(apiKey, `?${bp2.toString()}`).then((r) => r?.data?.meta?.total ?? 0).catch(() => 0),
+      API.apiGet(apiKey, `?${bp3.toString()}`).then((r) => r?.data?.meta?.total ?? 0).catch(() => 0),
+    ]).then(([basic, standard, other]) => {
+      onStatsChange({ total: basic + standard + other, basic, standard, other });
+    });
   };
 
   const fetchTabCounts = () => {
-    setAuthorization();
     const base = new URLSearchParams();
     if (debouncedSearch) base.append("search", debouncedSearch);
     if (startDate) base.append("startDate", startDate);
@@ -302,10 +285,10 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
     <div>
       {/* ── Tabs ── */}
       <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
-        <TabBtn active={activeTab === "paid"} onClick={() => onTabChange("paid")} count={tabCounts.paid}>
+        <TabBtn active={activeTab === "paid"} onClick={() => { onTabChange("paid"); setCurrentPage(1); }} count={tabCounts.paid}>
           Paid
         </TabBtn>
-        <TabBtn active={activeTab === "unpaid"} onClick={() => onTabChange("unpaid")} count={tabCounts.unpaid}>
+        <TabBtn active={activeTab === "unpaid"} onClick={() => { onTabChange("unpaid"); setCurrentPage(1); }} count={tabCounts.unpaid}>
           Unpaid
         </TabBtn>
       </div>

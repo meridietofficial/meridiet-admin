@@ -6,9 +6,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("__next")).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
 );

@@ -36,6 +36,9 @@ const apiKeys = {
   //change password
   changePassword: "admin/change-password",
 
+  //coupon management
+  coupons: "admin/coupons",
+
 };
 
 export default apiKeys;

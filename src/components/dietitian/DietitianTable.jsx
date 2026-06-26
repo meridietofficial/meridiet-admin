@@ -3,7 +3,7 @@ import { Table, FormControl, Modal, Button } from "react-bootstrap";
 import { FaSort, FaChevronDown, FaEye, FaCheckCircle, FaExternalLinkAlt } from "react-icons/fa";
 import { MdBlock, MdCheckCircle, MdDelete } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
-import API, { setAuthorization } from "../../helpers/api";
+import API from "../../helpers/api";
 import toast from "react-hot-toast";
 
 const VERIFY_STATUS = { 0: "Pending", 1: "Verified", 2: "Rejected" };
@@ -57,7 +57,6 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   useEffect(() => { fetchDietitians(); }, [debouncedSearch, sortType, currentPage]);
 
   const fetchDietitians = () => {
-    setAuthorization();
     setLoading(true);
     const params = new URLSearchParams();
     if (debouncedSearch) params.append("search", debouncedSearch);

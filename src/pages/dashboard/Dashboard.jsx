@@ -10,7 +10,7 @@ import {
   LuActivity, LuServer, LuDatabase, LuHeadphones,
   LuSalad, LuClock, LuClipboardList,
 } from "react-icons/lu";
-import API, { setAuthorization } from "../../helpers/api";
+import API from "../../helpers/api";
 
 // ── Period → API param maps ───────────────────────────────────────────────────
 const REV_PERIOD_MAP    = { "This Week": "daily", "This Month": "weekly", "This Year": "monthly" };
@@ -203,7 +203,6 @@ const Dashboard = () => {
 
   // ── Fetch: Summary stats (re-runs when date range changes) ───────
   useEffect(() => {
-    setAuthorization();
     setStatsLoading(true);
     const dp = buildDateParams(dateRange);
     API.apiGet("dashboardStats", dp ? `?${dp.slice(1)}` : "")
@@ -225,7 +224,6 @@ const Dashboard = () => {
 
   // ── Fetch: Revenue chart (re-runs when date range or period dropdown changes) ─
   useEffect(() => {
-    setAuthorization();
     setRevenueLoading(true);
     const period = REV_PERIOD_MAP[revPeriod] || "daily";
     const dp = buildDateParams(dateRange);
@@ -243,7 +241,6 @@ const Dashboard = () => {
 
   // ── Fetch: User growth chart ─────────────────────────────────────
   useEffect(() => {
-    setAuthorization();
     setUserGrowthLoading(true);
     const period = USER_PERIOD_MAP[userPeriod] || "monthly";
     const dp = buildDateParams(dateRange);
@@ -259,7 +256,6 @@ const Dashboard = () => {
 
   // ── Fetch: Consultations chart ───────────────────────────────────
   useEffect(() => {
-    setAuthorization();
     setConsultLoading(true);
     const period = CONSULT_PERIOD_MAP[consultPeriod] || "daily";
     const dp = buildDateParams(dateRange);
@@ -278,7 +274,6 @@ const Dashboard = () => {
 
   // ── Fetch: System overview (once only) ───────────────────────────
   useEffect(() => {
-    setAuthorization();
     API.apiGet("systemOverview", "")
       .then(res => setSystemData(res?.data?.data ?? null))
       .catch(() => {});
@@ -661,7 +656,6 @@ function RecentDietRequests({ dateRange }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setAuthorization();
     setLoading(true);
     const dp = dateRange?.from && dateRange?.to ? `&from=${dateRange.from}&to=${dateRange.to}` : "";
     API.apiGet("paidDietCharts", `?page=1&limit=5${dp}`)
