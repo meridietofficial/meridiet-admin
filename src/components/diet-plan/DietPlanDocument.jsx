@@ -1036,19 +1036,26 @@ const DietitiansPage = ({ plan, page }) => {
       </div>
 
       {/* sessions banner */}
-      <div style={{ background: C.banner, borderRadius: 14, padding: "16px 22px", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", margin: "14px 0" }}>
+      <div style={{ background: "#1a3c2e", borderRadius: 14, padding: "16px 22px", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", margin: "14px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <FaVideo size={30} style={{ opacity: 0.9 }} />
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+          </svg>
           <div>
             <div style={{ fontWeight: 800, fontSize: 17 }}>TAKE PERSONALIZED SESSIONS</div>
             <div style={{ fontWeight: 800, fontSize: 17 }}>WITH OUR EXPERT DIETITIANS</div>
             <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 3 }}>Get clarity. Get guidance. Get results.</div>
           </div>
         </div>
-        <div style={{ background: C.gold, borderRadius: 12, padding: "10px 20px", textAlign: "center", color: C.dark, flexShrink: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 700 }}>ONLY</div>
-          <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1 }}>₹2499</div>
-          <div style={{ fontSize: 8.5, fontWeight: 700, marginTop: 2 }}>FOR 2 SESSIONS IN A MONTH</div>
+        <div style={{ background: "#f5c842", borderRadius: 12, padding: "12px 18px", color: "#1a1a1a", flexShrink: 0, minWidth: 190 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, marginBottom: 2 }}>✦ 1-on-1 Expert Session</div>
+          <div style={{ fontSize: 13, fontWeight: 900, lineHeight: 1.2, marginBottom: 4 }}>Start Your Health Journey</div>
+          <div style={{ fontSize: 8.5, fontWeight: 500, opacity: 0.8, marginBottom: 8, lineHeight: 1.3 }}>Personalised consultation with a verified dietitian</div>
+          <div style={{ borderTop: "1px solid rgba(0,0,0,0.15)", paddingTop: 7 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, opacity: 0.75 }}>Starting from</div>
+            <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.1 }}>₹999</div>
+            <div style={{ fontSize: 8, fontWeight: 600, opacity: 0.7, marginTop: 1 }}>Price set by each dietitian</div>
+          </div>
         </div>
       </div>
 
