@@ -20,6 +20,9 @@ import DietitianManagement from "./pages/dashboard/DietitianManagement";
 import DietitianRequests from "./pages/dashboard/DietitianRequests";
 import DietChartRequests from "./pages/dashboard/DietChartRequests";
 import DietPlanPage from "./pages/dashboard/DietPlan";
+import AIDietPlans from "./pages/dashboard/AIDietPlans";
+import AIDietPlanReview from "./pages/dashboard/AIDietPlanReview";
+import AIDietPlanView from "./pages/dashboard/AIDietPlanView";
 import NutritionConfigPage from "./pages/dashboard/NutritionConfig";
 import CouponManagement from "./pages/dashboard/CouponManagement";
 
@@ -62,6 +65,9 @@ function App() {
                 <Route path="dietitian-management" element={<DietitianManagement />} />
                 <Route path="setting" element={<Setting />} />
                 <Route path="diet-plan/:id" element={<DietPlanPage />} />
+                <Route path="ai-diet-plans" element={<AIDietPlans />} />
+                <Route path="ai-diet-plans/:id" element={<AIDietPlanReview />} />
+                <Route path="ai-diet-plans/:id/view" element={<AIDietPlanView />} />
                 <Route path="nutrition-config" element={<NutritionConfigPage />} />
                 <Route path="coupon-management" element={<CouponManagement />} />
               </Route>

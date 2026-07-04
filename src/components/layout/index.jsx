@@ -77,13 +77,13 @@ const Layout = ({ children }) => {
           top: 100px;
           left: 15px;
           z-index: 1050;
-          background: #BE8C69;
+          background: #1E8E3E;
           border: none;
           border-radius: 8px;
           padding: 8px 12px;
           color: white;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 2px 8px rgba(30, 142, 62, 0.35);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -91,7 +91,7 @@ const Layout = ({ children }) => {
         }
 
         .mobile-menu-toggle:hover {
-          background: #b8941f;
+          background: #166C31;
         }
 
         /* Sidebar Container */

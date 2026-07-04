@@ -707,14 +707,12 @@ tr.activeRow {
   }
 }
 
-/* Responsive Charts */
+/* Responsive Charts — do NOT override recharts-surface width;
+   Recharts computes clipPath from its own measured dimensions.
+   ResponsiveContainer handles resizing internally. */
 @media (max-width: 991px) {
   .recharts-wrapper {
-    width: 100% !important;
-  }
-
-  .recharts-surface {
-    width: 100% !important;
+    max-width: 100%;
   }
 }
 

@@ -3,7 +3,7 @@ import { Nav } from "react-bootstrap";
 import { useRouter } from "../../helpers/useRouter";
 import styles from "../../stylesheets/layout.module.scss";
 import Logout from "../auth/Logout";
-import { LuLayoutDashboard, LuUsers, LuSettings2, LuLogOut, LuStethoscope, LuClipboardList, LuSalad, LuFlaskConical, LuTicket } from "react-icons/lu";
+import { LuLayoutDashboard, LuUsers, LuSettings2, LuLogOut, LuStethoscope, LuClipboardList, LuSalad, LuFlaskConical, LuTicket, LuBrainCircuit } from "react-icons/lu";
 import { useLoader } from "../../constants/LoaderContext";
 import { getLoggedInUser } from "../../helpers/auth";
 import { motion } from "framer-motion";
@@ -42,6 +42,7 @@ const Sidebar = ({ onNavClick }) => {
     { href: "/dashboard/user-management", icon: LuUsers, label: "User Management" },
     { href: "/dashboard/dietitian-requests", icon: LuClipboardList, label: "Dietitian Requests" },
     { href: "/dashboard/diet-chart-requests", icon: LuSalad, label: "Diet Chart Requests" },
+    { href: "/dashboard/ai-diet-plans", icon: LuBrainCircuit, label: "AI Diet Plans" },
     { href: "/dashboard/dietitian-management", icon: LuStethoscope, label: "Dietitians" },
     { href: "/dashboard/nutrition-config", icon: LuFlaskConical, label: "Nutrition Config" },
     { href: "/dashboard/coupon-management", icon: LuTicket, label: "Coupons" },
@@ -72,7 +73,9 @@ const Sidebar = ({ onNavClick }) => {
 
       {/* Nav items */}
       {navItems.map((item, idx) => {
-        const isActive = router.pathname === item.href;
+        const isActive = item.href === "/dashboard"
+          ? router.pathname === "/dashboard"
+          : router.pathname === item.href || router.pathname.startsWith(item.href + "/");
         return (
           <motion.div
             key={idx}

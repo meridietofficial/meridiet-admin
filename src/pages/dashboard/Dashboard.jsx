@@ -72,7 +72,7 @@ const DateRangePicker = ({ value, onChange }) => {
       </button>
 
       {open && (
-        <div style={{
+        <div className="drp-dropdown" style={{
           position: "absolute", top: "calc(100% + 8px)", right: 0, background: "#fff",
           borderRadius: "14px", border: "1px solid #e8ede9", zIndex: 999,
           boxShadow: "0 8px 30px rgba(0,0,0,0.12)", display: "flex", minWidth: "460px", overflow: "hidden",
@@ -300,7 +300,7 @@ const Dashboard = () => {
     <div style={{ padding: "0", background: "#f4f7f5", minHeight: "100vh" }}>
 
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "18px" }}>
+      <div className="dash-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "18px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "2px" }}>
             <div style={{ width: "4px", height: "20px", background: "linear-gradient(180deg, #1E8E3E, #4ade80)", borderRadius: "4px" }} />
@@ -358,11 +358,11 @@ const Dashboard = () => {
                 </>
             }
           </div>
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div>
             {revenueLoading ? (
-              <div style={{ height: "100%", minHeight: "180px", borderRadius: "8px", background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+              <div style={{ height: "220px", borderRadius: "8px", background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
@@ -494,11 +494,11 @@ const Dashboard = () => {
             }
             <div><span style={{ fontSize: "11px", color: "#aaa" }}>vs prev. period</span></div>
           </div>
-          <div style={{ flex: 1, minHeight: "200px" }}>
+          <div>
             {userGrowthLoading ? (
-              <div style={{ height: "100%", minHeight: "200px", borderRadius: "8px", background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+              <div style={{ height: "220px", borderRadius: "8px", background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={userGrowthData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#aaa" }} axisLine={false} tickLine={false} />
@@ -531,11 +531,11 @@ const Dashboard = () => {
             }
             <div><span style={{ fontSize: "11px", color: "#aaa" }}>vs prev. period</span></div>
           </div>
-          <div style={{ flex: 1, minHeight: "180px" }}>
+          <div>
             {consultLoading ? (
-              <div style={{ height: "100%", minHeight: "180px", borderRadius: "8px", background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+              <div style={{ height: "200px", borderRadius: "8px", background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={consultData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="consultGrad" x1="0" y1="0" x2="0" y2="1">
@@ -577,7 +577,7 @@ const Dashboard = () => {
       {/* ── Row 4: System Overview ── */}
       <Card>
         <SectionHeader title="System Overview" />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+        <div className="dash-system-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
           {[
             {
               icon: LuServer, label: "Server Uptime",
@@ -621,19 +621,32 @@ const Dashboard = () => {
 
       <style>{`
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-        .dash-top-grid { grid-template-columns: repeat(5, 1fr); }
-        .dash-row2 { grid-template-columns: 1.3fr 1fr 1fr; }
-        .dash-row3 { grid-template-columns: 1fr 1fr; }
+        .dash-top-grid    { grid-template-columns: repeat(5, 1fr); }
+        .dash-row2        { grid-template-columns: 1.3fr 1fr 1fr; }
+        .dash-row3        { grid-template-columns: 1fr 1fr; }
+        .dash-system-grid { grid-template-columns: repeat(4, 1fr); }
+
         @media (max-width: 1280px) {
-          .dash-top-grid { grid-template-columns: repeat(3, 1fr) !important; }
-          .dash-row2 { grid-template-columns: 1fr !important; }
+          .dash-top-grid    { grid-template-columns: repeat(3, 1fr) !important; }
+          .dash-row2        { grid-template-columns: 1fr !important; }
+          .dash-system-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 900px) {
-          .dash-top-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .dash-row2, .dash-row3, .dash-row4 { grid-template-columns: 1fr !important; }
+          .dash-top-grid              { grid-template-columns: repeat(2, 1fr) !important; }
+          .dash-row2, .dash-row3      { grid-template-columns: 1fr !important; }
+          .dash-system-grid           { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 767px) {
+          .dash-header                { flex-direction: column; gap: 10px; align-items: flex-start !important; }
+          .drp-dropdown               { right: auto !important; left: 0 !important; min-width: min(460px, calc(100vw - 20px)) !important; }
         }
         @media (max-width: 480px) {
-          .dash-top-grid { grid-template-columns: 1fr !important; }
+          .dash-top-grid              { grid-template-columns: repeat(2, 1fr) !important; }
+          .dash-system-grid           { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 360px) {
+          .dash-top-grid              { grid-template-columns: 1fr !important; }
+          .dash-system-grid           { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

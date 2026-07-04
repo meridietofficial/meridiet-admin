@@ -20,7 +20,7 @@ function Footer() {
       {/* <hr className="my-3" /> */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
         <img
-          src="../images/meridiet-logo.png"
+          src="/images/meridiet-logo.png"
           alt="MeriDiet"
           style={{ height: "36px", width: "auto", objectFit: "contain" }}
         />

@@ -106,6 +106,7 @@ export default function ForgotPassword() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
+      className="fp-container"
       style={{
         height: "100vh", width: "100%", background: "#ffffff",
         display: "flex", overflow: "hidden",
@@ -113,7 +114,7 @@ export default function ForgotPassword() {
       }}
     >
       {/* ── Left Panel ── */}
-      <div style={{
+      <div className="fp-left-panel" style={{
         width: "45%", height: "100vh", display: "flex",
         flexDirection: "column", justifyContent: "center",
         alignItems: "center", overflow: "hidden",
@@ -145,29 +146,41 @@ export default function ForgotPassword() {
                 {/* Email Row */}
                 <Form.Group style={{ marginBottom: "14px" }}>
                   <Form.Label style={labelStyle}>Email Address</Form.Label>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <div style={{ ...inputBox, border: emailError ? "1px solid #ef4444" : "1px solid #d1ead9", flex: 1 }}>
-                      <FiMail size={16} color="#1E8E3E" style={{ flexShrink: 0 }} />
-                      <Form.Control
-                        type="email"
-                        placeholder="Enter your email address"
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(false); }}
-                        style={controlStyle}
-                      />
-                    </div>
-                    <Button
+                  <div style={{
+                    ...inputBox,
+                    border: emailError ? "1px solid #ef4444" : "1px solid #d1ead9",
+                    height: "52px",
+                    padding: "0 8px 0 16px",
+                  }}>
+                    <FiMail size={16} color="#1E8E3E" style={{ flexShrink: 0 }} />
+                    <Form.Control
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(false); }}
+                      style={controlStyle}
+                    />
+                    <button
                       onClick={handleSubmit}
                       disabled={timer > 0}
                       style={{
-                        ...btnGreen,
-                        background: timer > 0 ? "#ccc" : btnGreen.background,
-                        height: "50px", fontSize: "13px",
-                        whiteSpace: "nowrap", padding: "0 20px",
+                        flexShrink: 0,
+                        background: timer > 0
+                          ? "#ccc"
+                          : "linear-gradient(135deg, #1E8E3E 0%, #166C31 100%)",
+                        border: "none",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        padding: "6px 14px",
+                        cursor: timer > 0 ? "not-allowed" : "pointer",
+                        letterSpacing: "0.3px",
                       }}
                     >
                       {timer > 0 ? formatTime(timer) : "SEND OTP"}
-                    </Button>
+                    </button>
                   </div>
                   {emailError && (
                     <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px", marginBottom: 0 }}>
@@ -184,7 +197,7 @@ export default function ForgotPassword() {
                       <span style={{ color: "#1E8E3E", fontWeight: 600 }}>{formatTime(timer)}</span>
                     )}
                   </Form.Label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div className="fp-otp-row" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <OtpInput
                       value={otp}
                       name="otp"
@@ -279,7 +292,7 @@ export default function ForgotPassword() {
       </div>
 
       {/* ── Right Panel ── */}
-      <div style={{
+      <div className="fp-right-panel" style={{
         width: "55%", height: "100vh", display: "flex",
         alignItems: "center", justifyContent: "center",
         padding: "24px 24px 24px 12px", background: "#F2F5F3",
@@ -323,8 +336,51 @@ export default function ForgotPassword() {
           box-shadow: none !important;
         }
         html, body {
-          overflow: hidden !important;
           height: 100% !important;
+        }
+        @media (max-width: 767px) {
+          .fp-container {
+            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100vh !important;
+          }
+          .fp-left-panel {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 100vh !important;
+            padding: 60px 20px 40px !important;
+            overflow: visible !important;
+            justify-content: flex-start !important;
+          }
+          .fp-right-panel {
+            display: none !important;
+          }
+.fp-otp-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+          .fp-otp-row > button {
+            width: 100% !important;
+            margin-top: 4px !important;
+          }
+          .fp-otp-row input {
+            width: 36px !important;
+            height: 36px !important;
+            font-size: 14px !important;
+            margin: 0 2px !important;
+          }
+          html, body {
+            overflow: auto !important;
+          }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .fp-left-panel {
+            width: 55% !important;
+            padding: 24px 32px !important;
+          }
+          .fp-right-panel {
+            width: 45% !important;
+          }
         }
       `}</style>
     </motion.div>

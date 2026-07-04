@@ -26,10 +26,10 @@ const DietChartRequests = () => {
   const isPaid = activeTab === "paid";
 
   const labels = {
-    total:    isPaid ? "Total Paid"      : "Total Requests",
-    basic:    isPaid ? "Basic (Paid)"    : "Basic (Unpaid)",
-    standard: isPaid ? "Standard (Paid)" : "Standard (Unpaid)",
-    other:    isPaid ? "Advance (Paid)"  : "Advance (Unpaid)",
+    total:    isPaid ? "Total Paid"        : "Total Requests",
+    basic:    isPaid ? "1 Week (Paid)"     : "1 Week (Unpaid)",
+    standard: isPaid ? "1 Month (Paid)"   : "1 Month (Unpaid)",
+    other:    isPaid ? "3 Months (Paid)"  : "3 Months (Unpaid)",
   };
 
   return (

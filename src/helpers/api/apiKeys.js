@@ -39,6 +39,9 @@ const apiKeys = {
   //coupon management
   coupons: "admin/coupons",
 
+  // AI-generated diet plans (new flow: form → AI → admin review → send)
+  aiDietPlans: "admin/diet-plans",
+
 };
 
 export default apiKeys;

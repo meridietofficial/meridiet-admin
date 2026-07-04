@@ -60,6 +60,7 @@ export default function Login() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
+      className="login-container"
       style={{
         height: "100vh",
         width: "100%",
@@ -71,6 +72,7 @@ export default function Login() {
     >
       {/* ── Left Panel ── */}
       <div
+        className="login-left-panel"
         style={{
           width: "45%",
           height: "100vh",
@@ -297,6 +299,7 @@ export default function Login() {
 
       {/* ── Right Panel ── */}
       <div
+        className="login-right-panel"
         style={{
           width: "55%",
           height: "100vh",
@@ -385,8 +388,38 @@ export default function Login() {
           box-shadow: none !important;
         }
         html, body {
-          overflow: hidden !important;
           height: 100% !important;
+        }
+        @media (max-width: 767px) {
+          .login-container {
+            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100vh !important;
+          }
+          .login-left-panel {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 100vh !important;
+            padding: 40px 24px !important;
+            overflow: visible !important;
+            justify-content: flex-start !important;
+            padding-top: 60px !important;
+          }
+          .login-right-panel {
+            display: none !important;
+          }
+          html, body {
+            overflow: auto !important;
+          }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .login-left-panel {
+            width: 55% !important;
+            padding: 24px 32px !important;
+          }
+          .login-right-panel {
+            width: 45% !important;
+          }
         }
       `}</style>
     </motion.div>

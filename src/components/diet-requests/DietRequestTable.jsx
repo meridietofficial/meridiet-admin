@@ -13,19 +13,27 @@ import * as XLSX from "xlsx";
 
 const STATUS_COLORS = {
   pending:     { bg: "#FFF8E1", color: "#F59E0B", border: "rgba(245,158,11,0.3)",   label: "Pending" },
-  generating:  { bg: "#EFF6FF", color: "#3b82f6", border: "rgba(59,130,246,0.3)",   label: "Generating" },
+  generating:  { bg: "#FFF8E1", color: "#F59E0B", border: "rgba(245,158,11,0.3)",   label: "Generating…" },
   in_progress: { bg: "#EFF6FF", color: "#3b82f6", border: "rgba(59,130,246,0.3)",   label: "In Progress" },
-  completed:   { bg: "#ECFDF5", color: "#10B981", border: "rgba(16,185,129,0.3)",   label: "Completed" },
+  completed:   { bg: "#EFF6FF", color: "#3b82f6", border: "rgba(59,130,246,0.3)",   label: "Pending Review" },
   failed:      { bg: "#FEF2F2", color: "#EF4444", border: "rgba(239,68,68,0.3)",    label: "Failed" },
   rejected:    { bg: "#FEF2F2", color: "#EF4444", border: "rgba(239,68,68,0.3)",    label: "Rejected" },
-  no_plan:     { bg: "#F3F4F6", color: "#9CA3AF", border: "rgba(156,163,175,0.3)",  label: "No Plan Yet" },
+  sent:        { bg: "#ECFDF5", color: "#10B981", border: "rgba(16,185,129,0.3)",   label: "Sent" },
+  no_plan:     { bg: "#F3F4F6", color: "#9CA3AF", border: "rgba(156,163,175,0.3)",  label: "Not Started" },
 };
 
-const PLAN_TYPES = { 1: "Basic Plan", 2: "Standard Plan", 3: "Advance Plan" };
+const PLAN_TYPES = { 1: "1 Week Plan", 2: "1 Month Plan", 3: "3 Month Plan" };
 const PLAN_FILTER_OPTIONS = [
-  { key: "1", label: "Basic Plan" },
-  { key: "2", label: "Standard Plan" },
-  { key: "3", label: "Advance Plan" },
+  { key: "1", label: "1 Week Plan" },
+  { key: "2", label: "1 Month Plan" },
+  { key: "3", label: "3 Month Plan" },
+];
+
+const PLAN_STATUS_OPTIONS = [
+  { key: "generating", label: "Generating…" },
+  { key: "completed",  label: "Pending Review" },
+  { key: "failed",     label: "Failed" },
+  { key: "sent",       label: "Sent" },
 ];
 
 const SORT_OPTIONS = [
@@ -110,9 +118,13 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortRef = useRef(null);
 
-  const [planTypeFilter, setPlanTypeFilter]         = useState("");
+  const [planTypeFilter, setPlanTypeFilter]             = useState("");
   const [showPlanTypeDropdown, setShowPlanTypeDropdown] = useState(false);
   const planTypeRef = useRef(null);
+
+  const [planStatusFilter, setPlanStatusFilter]           = useState("");
+  const [showPlanStatusDropdown, setShowPlanStatusDropdown] = useState(false);
+  const planStatusRef = useRef(null);
 
   const [startDate, setStartDate]           = useState("");
   const [endDate, setEndDate]               = useState("");
@@ -132,7 +144,7 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
   }, [search]);
 
   // Refetch on filter / tab change
-  useEffect(() => { fetchRequests(); }, [activeTab, debouncedSearch, sortType, planTypeFilter, currentPage, startDate, endDate]);
+  useEffect(() => { fetchRequests(); }, [activeTab, debouncedSearch, sortType, planTypeFilter, planStatusFilter, currentPage, startDate, endDate]);
 
   // Stats whenever tab / search / date changes
   useEffect(() => { fetchStats(); }, [activeTab, debouncedSearch, startDate, endDate]);
@@ -160,6 +172,8 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
     if (ed) p.append("endDate", ed);
     const pt = overrides.planType !== undefined ? overrides.planType : planTypeFilter;
     if (pt) p.append("planType", pt);
+    const ps = overrides.planStatus !== undefined ? overrides.planStatus : planStatusFilter;
+    if (ps) p.append("planStatus", ps);
 
     p.append("page", pg);
     p.append("limit", lm);
@@ -243,14 +257,18 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
             "State": r.state || "—",
             "Submitted": formatDate(r.created_at),
           };
-          if (isPaid) row["Payment (₹)"] = r.payment_amount ?? "—";
+          if (isPaid) {
+            row["Payment (₹)"] = r.payment_amount ?? "—";
+            row["Plan Status"] = humanize(r.plan_status || "Not Started");
+            row["Sent At"]     = r.sent_at ? formatDate(r.sent_at) : "—";
+          }
           return row;
         });
 
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, isPaid ? "Paid Plans" : "Unpaid Requests");
-        const colWidthsPaid  = [5, 22, 26, 16, 14, 24, 14, 14, 14, 14, 14, 14];
+        const colWidthsPaid  = [5, 22, 26, 16, 14, 24, 14, 14, 14, 14, 14, 16, 16];
         const colWidthsUnpaid = [5, 22, 26, 16, 14, 24, 14, 14, 14, 14, 14];
         ws["!cols"] = (isPaid ? colWidthsPaid : colWidthsUnpaid).map((w) => ({ wch: w }));
 
@@ -262,7 +280,9 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
       .finally(() => setIsExporting(false));
   };
 
-  const handleViewPlan = (r) => router.push(`/dashboard/diet-plan/${r.id}`);
+  const handleViewPlan = (r) => {
+    router.push(`/dashboard/diet-plan/${r.id}`);
+  };
 
   const clearDateRange = () => { setStartDate(""); setEndDate(""); setCurrentPage(1); };
   const hasDateFilter  = startDate || endDate;
@@ -273,13 +293,14 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
       if (sortRef.current && !sortRef.current.contains(e.target)) setShowSortDropdown(false);
       if (dateRef.current && !dateRef.current.contains(e.target)) setShowDatePicker(false);
       if (planTypeRef.current && !planTypeRef.current.contains(e.target)) setShowPlanTypeDropdown(false);
+      if (planStatusRef.current && !planStatusRef.current.contains(e.target)) setShowPlanStatusDropdown(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const columns = ["S.No", "Applicant", "Contact", "Plan", "Goals", "Diet", "Location", "Submitted", "Actions"];
-  const colWidths = { "S.No": "52px", Applicant: "180px", Contact: "200px", Plan: "120px", Goals: "150px", Diet: "120px", Location: "140px", Submitted: "150px", Actions: "180px" };
+  const columns = ["S.No", "Applicant", "Contact", "Plan", "Status", "Goals", "Diet", "Location", "Submitted", "Actions"];
+  const colWidths = { "S.No": "48px", Applicant: "160px", Contact: "180px", Plan: "115px", Status: "140px", Goals: "140px", Diet: "110px", Location: "120px", Submitted: "135px", Actions: "155px" };
 
   return (
     <div>
@@ -402,6 +423,40 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
             )}
           </div>
 
+          {/* Plan Status Filter (paid tab only) */}
+          {activeTab === "paid" && (
+            <div style={{ position: "relative" }} ref={planStatusRef}>
+              <button
+                onClick={() => setShowPlanStatusDropdown(!showPlanStatusDropdown)}
+                style={{ height: "42px", border: `1px solid ${planStatusFilter ? "#3b82f6" : "#e5e5e5"}`, borderRadius: "10px", padding: "0 14px", background: planStatusFilter ? "#eff6ff" : "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px", minWidth: "150px", fontWeight: 600, fontSize: "13px", color: planStatusFilter ? "#3b82f6" : "#555" }}
+              >
+                <FaFilter style={{ color: planStatusFilter ? "#3b82f6" : "#aaa", fontSize: "12px" }} />
+                {planStatusFilter ? (PLAN_STATUS_OPTIONS.find((o) => o.key === planStatusFilter)?.label ?? "Plan Status") : "Plan Status"}
+                {planStatusFilter
+                  ? <MdClose style={{ marginLeft: "auto", fontSize: "14px" }} onClick={(e) => { e.stopPropagation(); setPlanStatusFilter(""); setCurrentPage(1); }} />
+                  : <FaChevronDown style={{ marginLeft: "auto", fontSize: "11px", color: "#aaa" }} />}
+              </button>
+              {showPlanStatusDropdown && (
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#fff", border: "1px solid #edf1ee", borderRadius: "12px", minWidth: "170px", zIndex: 1000, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", padding: "6px" }}>
+                  {PLAN_STATUS_OPTIONS.map(({ key, label }) => {
+                    const sc = STATUS_COLORS[key] || {};
+                    return (
+                      <div key={key} onClick={() => { setPlanStatusFilter(key); setShowPlanStatusDropdown(false); setCurrentPage(1); }}
+                        style={{ padding: "9px 14px", cursor: "pointer", borderRadius: "8px", fontSize: "13px", fontWeight: planStatusFilter === key ? 700 : 500, color: planStatusFilter === key ? sc.color : "#444", background: planStatusFilter === key ? sc.bg : "transparent", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: sc.color || "#aaa", flexShrink: 0 }} />
+                        {label}
+                      </div>
+                    );
+                  })}
+                  {planStatusFilter && (
+                    <div onClick={() => { setPlanStatusFilter(""); setShowPlanStatusDropdown(false); }}
+                      style={{ padding: "9px 14px", cursor: "pointer", borderRadius: "8px", fontSize: "13px", color: "#EF4444", fontWeight: 600 }}>Clear Filter</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Export Excel */}
           <button
             onClick={handleExportExcel}
@@ -414,7 +469,7 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
         </div>
 
         {/* Active filters strip */}
-        {(hasDateFilter || sortType) && (
+        {(hasDateFilter || sortType || planStatusFilter) && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>Active filters:</span>
             {hasDateFilter && (
@@ -429,6 +484,12 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
                 <MdClose style={{ cursor: "pointer", fontSize: "13px" }} onClick={() => setSortType("")} />
               </span>
             )}
+            {planStatusFilter && (
+              <span style={{ background: STATUS_COLORS[planStatusFilter]?.bg, color: STATUS_COLORS[planStatusFilter]?.color, borderRadius: "20px", padding: "3px 10px", fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
+                {STATUS_COLORS[planStatusFilter]?.label}
+                <MdClose style={{ cursor: "pointer", fontSize: "13px" }} onClick={() => setPlanStatusFilter("")} />
+              </span>
+            )}
           </div>
         )}
 
@@ -441,7 +502,7 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
         ) : requests.length > 0 ? (
           <>
             <div style={{ borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", overflowX: "auto" }}>
-              <Table className="table mb-0" style={{ borderCollapse: "collapse", tableLayout: "fixed", width: "100%", minWidth: "1250px" }}>
+              <Table className="table mb-0" style={{ borderCollapse: "collapse", tableLayout: "fixed", width: "100%", minWidth: "1303px" }}>
                 <thead>
                   <tr>
                     {columns.map((col) => (
@@ -456,9 +517,9 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
                       ? (r.plan_status ?? "no_plan")
                       : (r.status ?? "pending");
                     const st = statusStyle(effectiveStatus);
-                    // Show Diet Plan button: unpaid → status=completed; paid → plan_status=completed OR pdf_url present
+                    // Paid: show review button when plan is ready or already sent (and plan_id exists)
                     const canViewPlan = activeTab === "paid"
-                      ? (r.plan_status === "completed" || !!r.pdf_url)
+                      ? (r.plan_status === "completed" || r.plan_status === "sent") && !!r.plan_id
                       : r.status === "completed";
                     const goals = toList(r.goals);
                     const sno = (pagination.page - 1) * pagination.limit + i + 1;
@@ -501,8 +562,22 @@ export default function DietRequestTable({ activeTab, onTabChange, onStatsChange
                               {PLAN_TYPES[r.plan_type] || `Plan ${r.plan_type ?? "—"}`}
                             </span>
                             {activeTab === "paid" && r.payment_amount != null && (
-                              <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: 700, paddingLeft: "4px" }}>
+                              <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: 700, paddingLeft: "2px" }}>
                                 ₹{r.payment_amount}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>
+                              {st.label}
+                            </span>
+                            {activeTab === "paid" && r.sent_at && (
+                              <span style={{ fontSize: "10px", color: "#6b7280", paddingLeft: "2px" }}>
+                                {formatDate(r.sent_at)}
                               </span>
                             )}
                           </div>
@@ -621,7 +696,9 @@ function DietRequestDetailModal({ show, onHide, request: r }) {
       </Modal.Header>
       <Modal.Body style={{ background: "#f8f9fa", padding: "1.5rem", maxHeight: "72vh", overflowY: "auto" }}>
         {r && (() => {
-          const st = statusStyle(r.status);
+          // For paid entries show plan_status; for unpaid show form status
+          const statusKey = r.plan_id != null ? (r.plan_status ?? "no_plan") : (r.status ?? "pending");
+          const st = statusStyle(statusKey);
           return (
             <div>
               <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: "18px" }}>
@@ -632,10 +709,12 @@ function DietRequestDetailModal({ show, onHide, request: r }) {
                   <h5 style={{ margin: 0, fontWeight: 800, color: "#111827" }}>{r.full_name || "N/A"}</h5>
                   <p style={{ margin: "2px 0 8px", color: "#888", fontSize: "13px" }}>
                     Request #{r.id} • Submitted {formatDate(r.created_at)}
+                    {r.payment_amount != null && ` • ₹${r.payment_amount}`}
                   </p>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: "20px", padding: "4px 12px", fontSize: "12px", fontWeight: 700 }}>{st.label}</span>
                     <span style={{ background: "#f0faf8", color: "#0d9488", border: "1px solid rgba(13,148,136,0.2)", borderRadius: "20px", padding: "4px 12px", fontSize: "12px", fontWeight: 700 }}>{PLAN_TYPES[r.plan_type] || `Plan ${r.plan_type ?? "—"}`}</span>
+                    {r.sent_at && <span style={{ background: "#ecfdf5", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "20px", padding: "4px 12px", fontSize: "12px", fontWeight: 700 }}>Sent {formatDate(r.sent_at)}</span>}
                   </div>
                 </div>
               </div>
@@ -658,6 +737,14 @@ function DietRequestDetailModal({ show, onHide, request: r }) {
                   <Field label="Work Type" value={humanize(r.work_type)} />
                   <Field label="Workout Type" value={humanize(r.workout_type)} />
                 </div>
+                {(r.breakfast_time || r.lunch_time || r.evening_snack_time || r.dinner_time) && (
+                  <div className="row g-3" style={{ marginTop: 0 }}>
+                    <Field label="Breakfast Time"     value={r.breakfast_time} />
+                    <Field label="Lunch Time"         value={r.lunch_time} />
+                    <Field label="Evening Snack Time" value={r.evening_snack_time} />
+                    <Field label="Dinner Time"        value={r.dinner_time} />
+                  </div>
+                )}
               </Section>
 
               <Section title="Diet Preferences">
@@ -669,6 +756,7 @@ function DietRequestDetailModal({ show, onHide, request: r }) {
                 <div className="row g-3" style={{ marginTop: "0" }}>
                   <Field label="Foods Disliked" value={r.foods_dislike} full />
                   <Field label="Favorite Foods" value={r.favorite_foods} full />
+                  {r.whey_protein && <Field label="Whey Protein" value={humanize(r.whey_protein)} full />}
                 </div>
               </Section>
 
