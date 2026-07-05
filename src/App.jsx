@@ -25,6 +25,7 @@ import AIDietPlanReview from "./pages/dashboard/AIDietPlanReview";
 import AIDietPlanView from "./pages/dashboard/AIDietPlanView";
 import NutritionConfigPage from "./pages/dashboard/NutritionConfig";
 import CouponManagement from "./pages/dashboard/CouponManagement";
+import Appointments from "./pages/dashboard/Appointments";
 
 const LoaderHandler = () => {
   const { loading } = useLoader();
@@ -70,6 +71,7 @@ function App() {
                 <Route path="ai-diet-plans/:id/view" element={<AIDietPlanView />} />
                 <Route path="nutrition-config" element={<NutritionConfigPage />} />
                 <Route path="coupon-management" element={<CouponManagement />} />
+                <Route path="appointments" element={<Appointments />} />
               </Route>
             </Routes>
 
