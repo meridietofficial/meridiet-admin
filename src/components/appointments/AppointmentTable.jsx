@@ -146,27 +146,29 @@ function StarRating({ value }) {
   );
 }
 
-// ── Filter options ─────────────────────────────────────────────────────────
-const STATUS_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "pending",   label: "Pending",   dot: "#d97706" },
-  { value: "confirmed", label: "Confirmed", dot: "#2563eb" },
-  { value: "completed", label: "Completed", dot: "#16a34a" },
-  { value: "cancelled", label: "Cancelled", dot: "#ef4444" },
-  { value: "missed",    label: "Missed",    dot: "#7c3aed" },
+// ── Tab options ────────────────────────────────────────────────────────────
+const PAYMENT_TABS = [
+  { value: "",         label: "All" },
+  { value: "paid",     label: "Paid",     color: "#16a34a" },
+  { value: "unpaid",   label: "Unpaid",   color: "#ef4444" },
+  { value: "refunded", label: "Refunded", color: "#7c3aed" },
 ];
 
-const PAYMENT_OPTIONS = [
-  { value: "",         label: "All Payments" },
-  { value: "unpaid",   label: "Unpaid",   dot: "#ef4444" },
-  { value: "paid",     label: "Paid",     dot: "#16a34a" },
-  { value: "refunded", label: "Refunded", dot: "#7c3aed" },
+const STATUS_TABS = [
+  { value: "",          label: "All" },
+  { value: "pending",   label: "Pending",   color: "#d97706" },
+  { value: "confirmed", label: "Confirmed", color: "#2563eb" },
+  { value: "completed", label: "Completed", color: "#16a34a" },
+  { value: "cancelled", label: "Cancelled", color: "#ef4444" },
+  { value: "missed",    label: "Missed",    color: "#7c3aed" },
 ];
 
-const SESSION_OPTIONS = [
-  { value: "",            label: "All Sessions" },
-  { value: "video_call",  label: "Video Call" },
-  { value: "in_person",   label: "In Person" },
+
+const NO_SHOW_OPTIONS = [
+  { value: "",           label: "All" },
+  { value: "user",       label: "User No-show",      dot: "#ef4444" },
+  { value: "dietitian",  label: "Dietitian No-show",  dot: "#f59e0b" },
+  { value: "any",        label: "Any No-show",        dot: "#6b7280" },
 ];
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -181,7 +183,7 @@ export default function AppointmentTable() {
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
-  const [sessionFilter, setSessionFilter] = useState("");
+  const [noShowFilter, setNoShowFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -198,12 +200,12 @@ export default function AppointmentTable() {
     p.append("limit", 20);
     if (statusFilter)  p.append("status", statusFilter);
     if (paymentFilter) p.append("payment_status", paymentFilter);
-    if (sessionFilter) p.append("session_type", sessionFilter);
+    if (noShowFilter)  p.append("no_show", noShowFilter);
     if (dateFrom)      p.append("date_from", dateFrom);
     if (dateTo)        p.append("date_to", dateTo);
     if (search)        p.append("search", search);
     return p.toString();
-  }, [currentPage, statusFilter, paymentFilter, sessionFilter, dateFrom, dateTo, search]);
+  }, [currentPage, statusFilter, paymentFilter, noShowFilter, dateFrom, dateTo, search]);
 
   const fetchAppointments = useCallback((page = currentPage) => {
     setLoading(true);
@@ -217,7 +219,7 @@ export default function AppointmentTable() {
       .finally(() => setLoading(false));
   }, [buildParams, currentPage]);
 
-  useEffect(() => { fetchAppointments(1); setCurrentPage(1); }, [statusFilter, paymentFilter, sessionFilter, dateFrom, dateTo, search]);
+  useEffect(() => { fetchAppointments(1); setCurrentPage(1); }, [statusFilter, paymentFilter, noShowFilter, dateFrom, dateTo, search]);
   useEffect(() => { fetchAppointments(currentPage); }, [currentPage]);
 
   const handleSearchInput = (val) => {
@@ -227,11 +229,11 @@ export default function AppointmentTable() {
   };
 
   const clearFilters = () => {
-    setStatusFilter(""); setPaymentFilter(""); setSessionFilter("");
+    setStatusFilter(""); setPaymentFilter(""); setNoShowFilter("");
     setDateFrom(""); setDateTo(""); setSearch(""); setSearchInput(""); setCurrentPage(1);
   };
 
-  const hasFilters = statusFilter || paymentFilter || sessionFilter || dateFrom || dateTo || search;
+  const hasFilters = statusFilter || paymentFilter || noShowFilter || dateFrom || dateTo || search;
 
   const openDetail = (id) => {
     setShowDetail(true);
@@ -246,6 +248,37 @@ export default function AppointmentTable() {
   return (
     <div>
       <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+
+        {/* Payment Tabs */}
+        <div style={{ display: "flex", borderBottom: "2px solid #f0f0f0", marginBottom: "14px", gap: "2px" }}>
+          {PAYMENT_TABS.map((tab) => {
+            const active = paymentFilter === tab.value;
+            const activeColor = tab.color || "#1E8E3E";
+            return (
+              <button key={tab.value} onClick={() => { setPaymentFilter(tab.value); setCurrentPage(1); }}
+                style={{ padding: "10px 22px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13.5px", color: active ? activeColor : "#6b7280", borderBottom: `2.5px solid ${active ? activeColor : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap" }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Status Pill Tabs */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
+          {STATUS_TABS.map((tab) => {
+            const active = statusFilter === tab.value;
+            const c = tab.color || "#1E8E3E";
+            return (
+              <button key={tab.value} onClick={() => { setStatusFilter(tab.value); setCurrentPage(1); }}
+                style={{ padding: "6px 16px", borderRadius: "20px", cursor: "pointer", fontWeight: 600, fontSize: "12.5px", border: `1.5px solid ${active ? c : "#e5e7eb"}`, background: active ? `${c}18` : "#fff", color: active ? c : "#6b7280", transition: "all 0.15s", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                {tab.value && <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: c, flexShrink: 0 }} />}
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
         {/* Toolbar */}
         <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
@@ -266,9 +299,7 @@ export default function AppointmentTable() {
             )}
           </div>
 
-          <FilterDropdown value={statusFilter}  onChange={(v) => { setStatusFilter(v);  setCurrentPage(1); }} options={STATUS_OPTIONS}  placeholder="Status"    accent="#2563eb" />
-          <FilterDropdown value={paymentFilter} onChange={(v) => { setPaymentFilter(v); setCurrentPage(1); }} options={PAYMENT_OPTIONS} placeholder="Payment"   accent="#16a34a" />
-          <FilterDropdown value={sessionFilter} onChange={(v) => { setSessionFilter(v); setCurrentPage(1); }} options={SESSION_OPTIONS} placeholder="Session"   accent="#7c3aed" />
+          <FilterDropdown value={noShowFilter}  onChange={(v) => { setNoShowFilter(v);  setCurrentPage(1); }} options={NO_SHOW_OPTIONS} placeholder="No-show"   accent="#ef4444" />
 
           {/* Date range */}
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -298,7 +329,7 @@ export default function AppointmentTable() {
               <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1000px" }}>
                 <thead>
                   <tr>
-                    {["S.No", "Patient", "Dietitian", "Date & Slot", "Session", "Status", "Payment", "Fee", "Created", "Actions"].map((col) => (
+                    {["S.No", "Patient", "Dietitian", "Date & Slot", "Status", "Payment", "Fee", "Created", "Actions"].map((col) => (
                       <th key={col} style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "13px", padding: "14px 16px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px" }}>{col}</th>
                     ))}
                   </tr>
@@ -325,7 +356,7 @@ export default function AppointmentTable() {
                           }
                           <div>
                             <p style={{ margin: 0, fontWeight: 600, fontSize: "13px", color: "#111827" }}>{a.dietitian?.name || "—"}</p>
-                            <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>#{a.dietitian?.id}</p>
+                            <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>#{a.dietitian?.id}{a.dietitian?.phone ? ` · ${a.dietitian.phone}` : ""}</p>
                           </div>
                         </div>
                       </td>
@@ -338,10 +369,6 @@ export default function AppointmentTable() {
                           <LuClock size={11} />
                           {a.slot} · {a.duration}min
                         </div>
-                      </td>
-                      <td style={{ padding: "12px 16px", verticalAlign: "middle" }}>
-                        <SessionBadge type={a.session_type} />
-                        {a.is_follow_up && <div style={{ marginTop: "4px", fontSize: "10px", color: "#9ca3af", fontWeight: 600 }}>Follow-up</div>}
                       </td>
                       <td style={{ padding: "12px 16px", verticalAlign: "middle" }}><StatusBadge status={a.status} /></td>
                       <td style={{ padding: "12px 16px", verticalAlign: "middle" }}><PaymentBadge status={a.payment_status} /></td>
@@ -486,6 +513,12 @@ export default function AppointmentTable() {
                         </div>
                         <div className="col-6">
                           <InfoRow label="Ended At" value={formatDateTime(detail.call_ended_at)} />
+                        </div>
+                        <div className="col-6">
+                          <InfoRow label="Patient Joined" value={formatDateTime(detail.call_tracking?.user_joined_at)} />
+                        </div>
+                        <div className="col-6">
+                          <InfoRow label="Dietitian Joined" value={formatDateTime(detail.call_tracking?.dietitian_joined_at)} />
                         </div>
                         {detail.recording_url && (
                           <div className="col-12">
