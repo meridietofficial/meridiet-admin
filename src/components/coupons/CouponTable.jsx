@@ -969,10 +969,10 @@ export default function CouponTable({ onStatsChange }) {
           ) : usagesData.length > 0 ? (
             <>
               <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee" }}>
-                <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "650px" }}>
+                <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "800px" }}>
                   <thead>
                     <tr>
-                      {["#", "User ID", "Type", "Original", "Discount", "Final", "Used At"].map((col) => (
+                      {["#", "User", "Type", "Amount", "Details", "Used At"].map((col) => (
                         <th key={col} style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "12px", padding: "12px 14px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31" }}>{col}</th>
                       ))}
                     </tr>
@@ -981,15 +981,42 @@ export default function CouponTable({ onStatsChange }) {
                     {usagesData.map((u, i) => (
                       <tr key={u.id} style={{ borderBottom: "1px solid #edf1ee", background: i % 2 === 0 ? "#fff" : "#fafcfa" }}>
                         <td style={{ padding: "10px 14px", fontSize: "13px", fontWeight: 700, color: "#1E8E3E", verticalAlign: "middle" }}>{(usagesMeta.page - 1) * usagesMeta.limit + i + 1}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", color: "#374151", verticalAlign: "middle" }}>#{u.user_id}</td>
                         <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
-                          <span style={{ fontSize: "12px", fontWeight: 600, color: "#6366f1", background: "#f5f3ff", padding: "3px 8px", borderRadius: "6px", textTransform: "capitalize" }}>
-                            {u.applicable_type?.replace("_", " ")}
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{u.user_name || `#${u.user_id}`}</p>
+                          {u.user_email && <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>{u.user_email}</p>}
+                          {u.user_phone && <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{u.user_phone}</p>}
+                        </td>
+                        <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                          <span style={{
+                            fontSize: "11px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px",
+                            background: u.applicable_type === "diet_plan" ? "#eff6ff" : "#fdf4ff",
+                            color: u.applicable_type === "diet_plan" ? "#2563eb" : "#9333ea",
+                          }}>
+                            {u.applicable_type === "diet_plan" ? "Diet Plan" : "Appointment"}
                           </span>
                         </td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", color: "#374151", verticalAlign: "middle" }}>₹{u.original_amount}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", color: "#16a34a", fontWeight: 700, verticalAlign: "middle" }}>-₹{u.discount_applied}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", color: "#111827", fontWeight: 700, verticalAlign: "middle" }}>₹{u.final_amount}</td>
+                        <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                          <p style={{ margin: 0, fontSize: "12px", color: "#9ca3af", textDecoration: "line-through" }}>₹{u.original_amount}</p>
+                          <p style={{ margin: 0, fontSize: "12px", color: "#16a34a", fontWeight: 700 }}>-₹{u.discount_applied}</p>
+                          <p style={{ margin: 0, fontSize: "13px", color: "#111827", fontWeight: 800 }}>₹{u.final_amount}</p>
+                        </td>
+                        <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                          {u.applicable_type === "diet_plan" ? (
+                            <>
+                              {u.payment_plan && (
+                                <span style={{ fontSize: "11px", fontWeight: 700, background: "#f0fdf4", color: "#15803d", padding: "2px 8px", borderRadius: "20px" }}>
+                                  {u.payment_plan.replace("_", " ")}
+                                </span>
+                              )}
+                              {u.payment_order_id && <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#9ca3af", fontFamily: "monospace" }}>{u.payment_order_id}</p>}
+                            </>
+                          ) : (
+                            <>
+                              {u.appointment_date && <p style={{ margin: 0, fontSize: "12px", color: "#374151", fontWeight: 600 }}>{formatDate(u.appointment_date)}{u.appointment_slot ? `, ${u.appointment_slot}` : ""}</p>}
+                              {u.dietitian_name && <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#6b7280" }}>{u.dietitian_name}</p>}
+                            </>
+                          )}
+                        </td>
                         <td style={{ padding: "10px 14px", fontSize: "12px", color: "#888", verticalAlign: "middle", whiteSpace: "nowrap" }}>{formatDateTime(u.used_at)}</td>
                       </tr>
                     ))}

@@ -12,6 +12,7 @@ const couponService = {
   update: (id, body) => axiosInstance.patch(`${BASE}/${id}`, body),
   deactivate: (id) => axiosInstance.delete(`${BASE}/${id}`),
   usages: (id, params) => axiosInstance.get(`${BASE}/${id}/usages?${params}`),
+  allUsages: (params) => axiosInstance.get(`admin/coupon-usages?${params}`),
 };
 
 export default couponService;
