@@ -2,49 +2,31 @@
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Footer from "../common/Footer";
-import { HiMenuAlt2 } from "react-icons/hi";
-import { IoClose } from "react-icons/io5";
 
-const Layout = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+const Layout = ({ children, sidebarOpen, onClose }) => {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 992);
-      if (window.innerWidth >= 992) {
-        setSidebarOpen(false);
+      const mobile = window.innerWidth < 992;
+      setIsMobile(mobile);
+      if (!mobile && onClose) {
+        onClose();
       }
     };
-
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  }, [onClose]);
 
   const closeSidebar = () => {
-    if (isMobile) {
-      setSidebarOpen(false);
+    if (isMobile && onClose) {
+      onClose();
     }
   };
 
   return (
     <div className="layout-wrapper">
-      {/* Mobile Menu Toggle Button */}
-      {isMobile && (
-        <button
-          className="mobile-menu-toggle"
-          onClick={toggleSidebar}
-          aria-label="Toggle menu"
-        >
-          {sidebarOpen ? <IoClose size={24} /> : <HiMenuAlt2 size={24} />}
-        </button>
-      )}
-
       {/* Overlay for mobile */}
       {isMobile && sidebarOpen && (
         <div className="sidebar-overlay" onClick={closeSidebar} />
@@ -71,29 +53,6 @@ const Layout = ({ children }) => {
           overflow-x: hidden;
         }
 
-        /* Mobile Menu Toggle Button */
-        .mobile-menu-toggle {
-          position: fixed;
-          top: 100px;
-          left: 15px;
-          z-index: 1050;
-          background: #1E8E3E;
-          border: none;
-          border-radius: 8px;
-          padding: 8px 12px;
-          color: white;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(30, 142, 62, 0.35);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-        }
-
-        .mobile-menu-toggle:hover {
-          background: #166C31;
-        }
-
         /* Sidebar Container */
         .sidebar-container {
           position: fixed;
@@ -111,7 +70,7 @@ const Layout = ({ children }) => {
 
         .sidebar-container.mobile {
           transform: translateX(-100%);
-          z-index: 1040;
+          z-index: 1039;
         }
 
         .sidebar-container.mobile.open {
@@ -126,7 +85,7 @@ const Layout = ({ children }) => {
           right: 0;
           bottom: 0;
           background: rgba(0, 0, 0, 0.5);
-          z-index: 1030;
+          z-index: 1038;
           animation: fadeIn 0.3s ease;
         }
 
@@ -181,22 +140,12 @@ const Layout = ({ children }) => {
           }
           .content-wrapper {
             padding: 15px;
-            padding-top: 60px;
-          }
-          .mobile-menu-toggle {
-            top: 85px;
           }
         }
 
         @media (max-width: 767px) {
           .content-wrapper {
             padding: 10px;
-            padding-top: 55px;
-          }
-          .mobile-menu-toggle {
-            top: 82px;
-            left: 10px;
-            padding: 6px 10px;
           }
         }
 
@@ -207,7 +156,6 @@ const Layout = ({ children }) => {
           }
           .content-wrapper {
             padding: 8px;
-            padding-top: 50px;
           }
         }
       `}</style>

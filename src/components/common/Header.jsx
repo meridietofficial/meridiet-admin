@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Container, Navbar, Image } from "react-bootstrap";
 import styles from "../../stylesheets/layout.module.scss";
 import { getLoggedInUser } from "../../helpers/auth";
+import { HiMenuAlt2 } from "react-icons/hi";
+import { IoClose } from "react-icons/io5";
 
-function Header() {
+function Header({ onToggle, sidebarOpen }) {
   const [adminName, setAdminName] = useState("Admin");
   const [profilePic, setProfilePic] = useState(null);
 
@@ -36,6 +38,13 @@ function Header() {
     <>
       <Navbar className={`${styles.headerMainBox}`}>
         <Container fluid style={{ paddingLeft: "24px", paddingRight: "24px" }}>
+          {/* Mobile hamburger */}
+          {onToggle && (
+            <button className="header-hamburger" onClick={onToggle} aria-label="Toggle menu">
+              {sidebarOpen ? <IoClose size={22} /> : <HiMenuAlt2 size={22} />}
+            </button>
+          )}
+
           {/* Brand */}
           <Navbar.Brand className="dflexAC" style={{ gap: "10px" }}>
             <Image
@@ -90,6 +99,31 @@ function Header() {
       </Navbar>
 
       <style>{`
+        .header-hamburger {
+          display: none;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: 1px solid #E4EAE6;
+          border-radius: 8px;
+          padding: 6px 10px;
+          color: #1E8E3E;
+          cursor: pointer;
+          flex-shrink: 0;
+          margin-right: 10px;
+          transition: background 0.2s ease;
+        }
+
+        .header-hamburger:hover {
+          background: #f0f9f3;
+        }
+
+        @media (max-width: 991px) {
+          .header-hamburger {
+            display: flex;
+          }
+        }
+
         .header-logo-ring {
           width: 46px;
           height: 46px;
@@ -135,8 +169,20 @@ function Header() {
           margin-top: 3px;
         }
 
+        /* Prevent Bootstrap's default flex-wrap from wrapping navbar rows */
+        .navbar > .container-fluid {
+          flex-wrap: nowrap !important;
+          align-items: center;
+        }
+
+        .navbar-brand {
+          flex-shrink: 0;
+          white-space: nowrap;
+        }
+
         .header-right-section {
           gap: 18px;
+          flex-shrink: 0;
         }
 
         .header-date-pill {
@@ -206,7 +252,8 @@ function Header() {
           font-weight: 500 !important;
         }
 
-        @media (max-width: 767px) {
+        /* On tablet/mobile (hamburger visible), collapse non-essential header items */
+        @media (max-width: 991px) {
           .header-date-pill { display: none; }
           .header-vdivider { display: none; }
           .header-admin-info { display: none; }

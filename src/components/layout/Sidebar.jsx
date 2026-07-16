@@ -3,7 +3,7 @@ import { Nav } from "react-bootstrap";
 import { useRouter } from "../../helpers/useRouter";
 import styles from "../../stylesheets/layout.module.scss";
 import Logout from "../auth/Logout";
-import { LuLayoutDashboard, LuUsers, LuSettings2, LuLogOut, LuStethoscope, LuClipboardList, LuSalad, LuFlaskConical, LuTicket, LuBrainCircuit, LuCalendarDays, LuReceipt } from "react-icons/lu";
+import { LuLayoutDashboard, LuUsers, LuSettings2, LuLogOut, LuStethoscope, LuClipboardList, LuSalad, LuFlaskConical, LuTicket, LuBrainCircuit, LuCalendarDays, LuReceipt, LuBookOpen } from "react-icons/lu";
 import { useLoader } from "../../constants/LoaderContext";
 import { getLoggedInUser } from "../../helpers/auth";
 import { motion } from "framer-motion";
@@ -46,6 +46,7 @@ const Sidebar = ({ onNavClick }) => {
     { href: "/dashboard/dietitian-management", icon: LuStethoscope, label: "Dietitians" },
     { href: "/dashboard/nutrition-config", icon: LuFlaskConical, label: "Nutrition Config" },
     { href: "/dashboard/appointments", icon: LuCalendarDays, label: "Appointments" },
+    { href: "/dashboard/course-management", icon: LuBookOpen, label: "Courses" },
     { href: "/dashboard/coupon-management", icon: LuTicket, label: "Coupons" },
     { href: "/dashboard/coupon-redemptions", icon: LuReceipt, label: "Redemptions" },
     { href: "/dashboard/setting", icon: LuSettings2, label: "Settings" },
@@ -70,38 +71,38 @@ const Sidebar = ({ onNavClick }) => {
   return (
     <Nav className={`${styles.sidebarBox} flex-column`}>
 
-      {/* Nav label */}
-      <p className={styles.sidebarNavLabel}>NAVIGATION</p>
+      {/* Scrollable nav items — grows to fill available space */}
+      <div className={styles.sidebarScrollArea}>
+        {/* Nav label */}
+        <p className={styles.sidebarNavLabel}>NAVIGATION</p>
 
-      {/* Nav items */}
-      {navItems.map((item, idx) => {
-        const isActive = item.href === "/dashboard"
-          ? router.pathname === "/dashboard"
-          : router.pathname === item.href || router.pathname.startsWith(item.href + "/");
-        return (
-          <motion.div
-            key={idx}
-            onClick={() => handleNavClick(item.href)}
-            className={`${styles.sidebarNavItem} ${isActive ? styles.sidebarNavActive : ""}`}
-            whileHover={!isActive ? { x: 4 } : {}}
-            transition={{ duration: 0.15 }}
-          >
-            <div className={`${styles.sidebarNavIcon} ${isActive ? styles.sidebarNavIconActive : ""}`}>
-              <item.icon size={18} />
-            </div>
-            <span className={styles.sidebarNavLabel2}>{item.label}</span>
-            {isActive && <div className={styles.sidebarNavPip} />}
-          </motion.div>
-        );
-      })}
+        {/* Nav items */}
+        {navItems.map((item, idx) => {
+          const isActive = item.href === "/dashboard"
+            ? router.pathname === "/dashboard"
+            : router.pathname === item.href || router.pathname.startsWith(item.href + "/");
+          return (
+            <motion.div
+              key={idx}
+              onClick={() => handleNavClick(item.href)}
+              className={`${styles.sidebarNavItem} ${isActive ? styles.sidebarNavActive : ""}`}
+              whileHover={!isActive ? { x: 4 } : {}}
+              transition={{ duration: 0.15 }}
+            >
+              <div className={`${styles.sidebarNavIcon} ${isActive ? styles.sidebarNavIconActive : ""}`}>
+                <item.icon size={18} />
+              </div>
+              <span className={styles.sidebarNavLabel2}>{item.label}</span>
+              {isActive && <div className={styles.sidebarNavPip} />}
+            </motion.div>
+          );
+        })}
+      </div>
 
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
-
-      {/* Divider */}
+      {/* Divider — always visible above logout */}
       <div className={styles.sidebarDivider} />
 
-      {/* Logout */}
+      {/* Logout — pinned at the bottom */}
       <motion.div
         className={styles.sidebarLogout}
         onClick={() => setShow(true)}

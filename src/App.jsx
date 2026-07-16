@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Routes, Route, Outlet } from "react-router-dom";
 import { ThemeProvider } from "react-bootstrap";
 import { Provider } from "react-redux";
@@ -27,6 +28,7 @@ import NutritionConfigPage from "./pages/dashboard/NutritionConfig";
 import CouponManagement from "./pages/dashboard/CouponManagement";
 import CouponRedemptions from "./pages/dashboard/CouponRedemptions";
 import Appointments from "./pages/dashboard/Appointments";
+import CourseManagement from "./pages/dashboard/CourseManagement";
 
 const LoaderHandler = () => {
   const { loading } = useLoader();
@@ -36,10 +38,14 @@ const LoaderHandler = () => {
 // Equivalent of the Next.js `isDashboard` branch in _app.js: dashboard routes
 // get the Header + Layout shell, everything else renders bare.
 function DashboardLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <>
-      <Header />
-      <Layout>
+      <Header onToggle={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <Layout sidebarOpen={sidebarOpen} onClose={closeSidebar}>
         <Outlet />
       </Layout>
     </>
@@ -74,6 +80,7 @@ function App() {
                 <Route path="coupon-management" element={<CouponManagement />} />
                 <Route path="coupon-redemptions" element={<CouponRedemptions />} />
                 <Route path="appointments" element={<Appointments />} />
+                <Route path="course-management" element={<CourseManagement />} />
               </Route>
             </Routes>
 

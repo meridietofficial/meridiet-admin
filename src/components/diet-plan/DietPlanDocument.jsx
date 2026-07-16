@@ -140,7 +140,7 @@ const Title = ({ pre, accent, size = 34, nowrap }) => (
 const SectionCard = ({ icon, title, children, style }) => (
   <div style={{ background: C.card, borderRadius: 14, padding: "11px 14px", ...style }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-      <span style={{ fontSize: 16, display: "flex", alignItems: "center" }}>{icon}</span>
+      <span style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>{icon}</span>
       <div style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.dark, letterSpacing: 0.3, whiteSpace: "nowrap" }}>{title}</div>
     </div>
     {children}
@@ -148,11 +148,11 @@ const SectionCard = ({ icon, title, children, style }) => (
 );
 
 const Row = ({ icon, label, value }) => (
-  <div style={{ display: "flex", alignItems: "center", fontSize: 11, padding: "4px 0", lineHeight: 1.3 }}>
-    {icon && <span style={{ width: 15, display: "flex", justifyContent: "center", color: C.faint, marginRight: 8, flexShrink: 0 }}>{icon}</span>}
+  <div style={{ display: "flex", alignItems: "flex-start", fontSize: 11, padding: "3px 0", lineHeight: 1.3 }}>
+    {icon && <span style={{ width: 15, display: "flex", justifyContent: "center", color: C.faint, marginRight: 8, flexShrink: 0, paddingTop: 1 }}>{icon}</span>}
     <span style={{ color: C.sub, minWidth: 116, flexShrink: 0 }}>{label}</span>
-    <span style={{ color: C.sub, margin: "0 5px" }}>:</span>
-    <span style={{ color: C.ink, fontWeight: 600 }}>{value || "—"}</span>
+    <span style={{ color: C.sub, margin: "0 5px", flexShrink: 0 }}>:</span>
+    <span style={{ color: C.ink, fontWeight: 600, wordBreak: "break-word" }}>{value || "—"}</span>
   </div>
 );
 
@@ -307,7 +307,7 @@ const ProfilePage = ({ plan, page }) => {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
           <Title pre="CLIENT PROFILE & VITALS" />
-          <p style={{ fontSize: 13, color: C.sub, margin: "2px 0 0" }}>Here's a summary of the information you provided.<br />We'll use this to personalize your plan and track your progress.</p>
+          <p style={{ fontSize: 13, color: C.sub, margin: "2px 0 0", lineHeight: 1.4 }}>Here's a summary of the information you provided.<br />We'll use this to personalize your plan and track your progress.</p>
         </div>
       </div>
       <div style={{ position: "absolute", right: 40, top: 96, background: C.soft, borderRadius: 12, padding: "10px 16px", fontSize: 11.5, color: C.ink }}>
@@ -359,9 +359,9 @@ const ProfilePage = ({ plan, page }) => {
 
         <SectionCard icon={<FaNotesMedical size={14} color={C.brand} />} title="MEDICAL INFORMATION">
           <Row icon={<FaNotesMedical size={11} />} label="Medical Conditions" value={none(md.medical_conditions)} />
-          <Row icon={<FaHeartbeat size={11} />} label="Other Condition" value={md.other_condition} />
+          <Row icon={<FaHeartbeat size={11} />} label="Other Condition" value={md.other_condition || "None"} />
           <Row icon={<FaPills size={11} />} label="On Medication" value={humanize(md.on_medication)} />
-          <Row icon={<FaCapsules size={11} />} label="Medications" value={md.medications} />
+          <Row icon={<FaCapsules size={11} />} label="Medications" value={md.medications || "None"} />
           <Row icon={<FaExclamationTriangle size={11} />} label="Allergies / Intolerances" value={none(md.food_allergies)} />
         </SectionCard>
 
@@ -376,7 +376,7 @@ const ProfilePage = ({ plan, page }) => {
       <div style={{ marginTop: 16, display: "flex", gap: 14, alignItems: "stretch" }}>
         <div style={{ flex: 1.9, background: C.soft, borderRadius: 14, padding: "14px 18px" }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: C.dark, marginBottom: 5, display: "flex", alignItems: "center", gap: 8 }}><FaRegStickyNote size={13} color={C.brand} /> ADDITIONAL NOTES</div>
-          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.5 }}>{g.final_notes || g.health_notes || "Prefers simple, sustainable meals with Indian food options. Motivated to stay consistent and follow the plan."}</div>
+          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.5 }}>{g.final_notes || "Prefers simple, sustainable meals with Indian food options. Motivated to stay consistent and follow the plan."}</div>
         </div>
         <div style={{ flex: 1, background: C.soft, borderRadius: 14, padding: "14px 18px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: C.brand }}>
           <FaQuoteLeft size={15} style={{ opacity: 0.55, alignSelf: "flex-start" }} />

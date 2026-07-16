@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Table, FormControl, Modal, Button } from "react-bootstrap";
-import { FaSort, FaChevronDown, FaEye, FaCheckCircle, FaExternalLinkAlt } from "react-icons/fa";
-import { MdBlock, MdCheckCircle, MdDelete } from "react-icons/md";
+import { FaSort, FaChevronDown, FaEye, FaCheckCircle, FaExternalLinkAlt, FaFileExcel, FaCalendarAlt, FaFilter } from "react-icons/fa";
+import { MdBlock, MdCheckCircle, MdDelete, MdClose } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
 import API from "../../helpers/api";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 const VERIFY_STATUS = { 0: "Pending", 1: "Verified", 2: "Rejected" };
 const VERIFY_COLORS = {
@@ -19,12 +20,19 @@ const formatDate = (iso) => {
   return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
 };
 
-// Normalizes a value that may be an array, a comma string, or null into a clean list
 const toList = (val) => {
   if (Array.isArray(val)) return val.filter(Boolean);
   if (typeof val === "string" && val.trim()) return val.split(",").map((s) => s.trim()).filter(Boolean);
   return [];
 };
+
+const SORT_OPTIONS = [
+  { key: "new", label: "Newest First", sortBy: "created_at", sortOrder: "DESC" },
+  { key: "old", label: "Oldest First", sortBy: "created_at", sortOrder: "ASC" },
+  { key: "a-z", label: "Name A – Z",  sortBy: "full_name",  sortOrder: "ASC"  },
+  { key: "z-a", label: "Name Z – A",  sortBy: "full_name",  sortOrder: "DESC" },
+];
+const SORT_LABEL = { new: "Newest", old: "Oldest", "a-z": "A – Z", "z-a": "Z – A" };
 
 // apiKey: "dietitianList" | "dietitianRequests"
 // showVerify: true = show Verify button in detail modal
@@ -35,10 +43,27 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Sort
   const [sortType, setSortType] = useState("");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortRef = useRef(null);
 
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState("");
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusRef = useRef(null);
+
+  // Date range
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const dateRef = useRef(null);
+
+  // Export
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Detail modal
   const [showDetail, setShowDetail] = useState(false);
   const [selectedDietitian, setSelectedDietitian] = useState(null);
   const [verifying, setVerifying] = useState(false);
@@ -49,23 +74,46 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setCurrentPage(1); }, 500);
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => { fetchDietitians(); }, [debouncedSearch, sortType, currentPage]);
+  useEffect(() => { fetchDietitians(); }, [debouncedSearch, sortType, statusFilter, currentPage, startDate, endDate]);
+
+  const buildParams = (overrides = {}) => {
+    const params = new URLSearchParams();
+
+    const s  = overrides.search    !== undefined ? overrides.search    : debouncedSearch;
+    const st = overrides.sortType  !== undefined ? overrides.sortType  : sortType;
+    const sd = overrides.startDate !== undefined ? overrides.startDate : startDate;
+    const ed = overrides.endDate   !== undefined ? overrides.endDate   : endDate;
+    const pg = overrides.page      !== undefined ? overrides.page      : currentPage;
+    const lm = overrides.limit     !== undefined ? overrides.limit     : pagination.limit;
+    const sv = overrides.status    !== undefined ? overrides.status    : statusFilter;
+
+    if (s) params.append("search", s);
+
+    const option = SORT_OPTIONS.find((o) => o.key === st);
+    if (option) {
+      params.append("sortBy", option.sortBy);
+      params.append("sortOrder", option.sortOrder);
+    }
+
+    if (sd) params.append("startDate", sd);
+    if (ed) params.append("endDate", ed);
+    if (sv) params.append("status", sv);
+
+    params.append("page", pg);
+    params.append("limit", lm);
+
+    return params.toString();
+  };
 
   const fetchDietitians = () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (debouncedSearch) params.append("search", debouncedSearch);
-    if (sortType === "a-z") { params.append("sortBy", "full_name"); params.append("sortOrder", "ASC"); }
-    if (sortType === "z-a") { params.append("sortBy", "full_name"); params.append("sortOrder", "DESC"); }
-    params.append("page", currentPage);
-    params.append("limit", pagination.limit);
-
-    API.apiGet(apiKey, `?${params.toString()}`)
+    API.apiGet(apiKey, `?${buildParams()}`)
       .then((res) => {
         const data = res?.data?.data || [];
         const meta = res?.data?.meta || {};
@@ -74,6 +122,109 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
       })
       .catch(() => toast.error("Failed to fetch dietitians."))
       .finally(() => setLoading(false));
+  };
+
+  const handleExportExcel = () => {
+    setIsExporting(true);
+    API.apiGet(apiKey, `?${buildParams({ page: 1, limit: 10000 })}`)
+      .then((res) => {
+        const data = res?.data?.data || [];
+        if (!data.length) { toast.error("No data to export."); return; }
+
+        const formatAvailability = (avail) => {
+          if (!avail || typeof avail !== "object") return "—";
+          return ["mon","tue","wed","thu","fri","sat","sun"]
+            .map((day) => {
+              const slots = avail[day];
+              return slots?.length ? `${day.toUpperCase()}: ${slots.join(", ")}` : null;
+            })
+            .filter(Boolean)
+            .join(" | ") || "—";
+        };
+
+        const formatDegrees = (degrees) => {
+          const list = toList(degrees);
+          if (!list.length) return "—";
+          return list.map((deg) => {
+            const parts = [deg.degree, deg.institute, deg.year].filter(Boolean);
+            return parts.join(" – ");
+          }).join("; ");
+        };
+
+        const formatAwards = (awards) => {
+          const list = toList(awards);
+          if (!list.length) return "—";
+          return list.map((aw) => {
+            const parts = [aw.title, aw.organization, aw.year].filter(Boolean);
+            return parts.join(" – ");
+          }).join("; ");
+        };
+
+        const rows = data.map((d, i) => ({
+          // ── Identity
+          "#":                    i + 1,
+          "Full Name":            d.full_name || "N/A",
+          "Email":                d.email || "—",
+          "Phone":                d.phone_number ? `${d.phone_code || ""} ${d.phone_number}`.trim() : "—",
+          "Gender":               d.gender || "—",
+          "Date of Birth":        d.date_of_birth ? formatDate(d.date_of_birth) : "—",
+
+          // ── Location
+          "City":                 d.city || "—",
+          "State":                d.state || "—",
+
+          // ── Professional
+          "Experience":           d.experience || "—",
+          "Registration No.":     d.registration_number || "—",
+          "Specialization":       toList(d.specialization).join(", ") || "—",
+          "Languages":            toList(d.languages).join(", ") || "—",
+          "Services":             toList(d.services).join(", ") || "—",
+          "Bio":                  d.bio || "—",
+
+          // ── Education & Awards
+          "Degrees":              formatDegrees(d.degrees),
+          "Awards":               formatAwards(d.awards),
+
+          // ── Availability
+          "Availability":         formatAvailability(d.availability),
+
+          // ── Status
+          "Active Status":        d.is_active ? "Active" : "Blocked",
+          "Verified Status":      VERIFY_STATUS[d.is_verified] ?? "Pending",
+          "Online":               d.is_online ? "Online" : "Offline",
+
+          // ── Documents (URLs for review)
+          "Profile Photo":        d.documents?.profile_photo || "—",
+          "Degree Certificate":   d.documents?.degree_certificate || "—",
+          "Reg. Certificate":     d.documents?.registration_certificate || "—",
+          "ID Proof":             d.documents?.id_proof || "—",
+          "Exp. Certificate":     d.documents?.experience_certificate || "—",
+
+          // ── Timestamps
+          "Joined":               formatDate(d.created_at),
+          "Last Updated":         formatDate(d.updated_at),
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Dietitians");
+
+        ws["!cols"] = [
+          { wch: 5  }, { wch: 22 }, { wch: 28 }, { wch: 18 },
+          { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+          { wch: 14 }, { wch: 18 }, { wch: 26 }, { wch: 20 },
+          { wch: 24 }, { wch: 40 }, { wch: 36 }, { wch: 36 },
+          { wch: 50 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+          { wch: 40 }, { wch: 40 }, { wch: 40 }, { wch: 40 },
+          { wch: 40 }, { wch: 14 }, { wch: 14 },
+        ];
+
+        const dateStr = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `dietitians_export_${dateStr}.xlsx`);
+        toast.success(`Exported ${rows.length} dietitians to Excel.`);
+      })
+      .catch(() => toast.error("Export failed. Please try again."))
+      .finally(() => setIsExporting(false));
   };
 
   const handleVerify = () => {
@@ -114,8 +265,16 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
       .finally(() => setIsDeleting(false));
   };
 
+  const clearDateRange = () => { setStartDate(""); setEndDate(""); setCurrentPage(1); };
+  const hasDateFilter = startDate || endDate;
+
+  // Close dropdowns on outside click
   useEffect(() => {
-    const handler = (e) => { if (sortRef.current && !sortRef.current.contains(e.target)) setShowSortDropdown(false); };
+    const handler = (e) => {
+      if (sortRef.current   && !sortRef.current.contains(e.target))   setShowSortDropdown(false);
+      if (dateRef.current   && !dateRef.current.contains(e.target))   setShowDatePicker(false);
+      if (statusRef.current && !statusRef.current.contains(e.target)) setShowStatusDropdown(false);
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
@@ -137,9 +296,11 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   return (
     <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
 
-      {/* Search & Sort */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-        <div style={{ position: "relative", flex: 1 }}>
+      {/* ── Toolbar ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
+
+        {/* Search */}
+        <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
           <svg style={{ position: "absolute", left: "13px", top: "50%", transform: "translateY(-50%)", color: "#aaa" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <FormControl
             type="text"
@@ -150,18 +311,96 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
           />
         </div>
 
+        {/* Status Filter */}
+        <div style={{ position: "relative" }} ref={statusRef}>
+          <button
+            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+            style={{ height: "42px", border: `1px solid ${statusFilter ? "#f59e0b" : "#e5e5e5"}`, borderRadius: "10px", padding: "0 14px", background: statusFilter ? "#fffbeb" : "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px", minWidth: "140px", fontWeight: 600, fontSize: "13px", color: statusFilter ? "#d97706" : "#555" }}
+          >
+            <FaFilter style={{ fontSize: "12px", color: statusFilter ? "#d97706" : "#aaa" }} />
+            {statusFilter === "active" ? "Active" : statusFilter === "blocked" ? "Blocked" : "All Status"}
+            {statusFilter
+              ? <MdClose style={{ marginLeft: "auto", fontSize: "14px", color: "#d97706" }} onClick={(e) => { e.stopPropagation(); setStatusFilter(""); setCurrentPage(1); }} />
+              : <FaChevronDown style={{ marginLeft: "auto", fontSize: "11px", color: "#aaa" }} />
+            }
+          </button>
+          {showStatusDropdown && (
+            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#fff", border: "1px solid #edf1ee", borderRadius: "12px", minWidth: "155px", zIndex: 1000, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", padding: "6px" }}>
+              {[
+                { key: "",        label: "All Status", dot: "#6b7280" },
+                { key: "active",  label: "Active",     dot: "#16a34a" },
+                { key: "blocked", label: "Blocked",    dot: "#ef4444" },
+              ].map(({ key, label, dot }) => (
+                <div key={key} onClick={() => { setStatusFilter(key); setShowStatusDropdown(false); setCurrentPage(1); }}
+                  style={{ padding: "9px 14px", cursor: "pointer", borderRadius: "8px", fontSize: "13px", fontWeight: statusFilter === key ? 700 : 500, color: statusFilter === key ? "#d97706" : "#444", background: statusFilter === key ? "#fffbeb" : "transparent", display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: dot, flexShrink: 0 }} />
+                  {label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Date Range */}
+        <div style={{ position: "relative" }} ref={dateRef}>
+          <button
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            style={{ height: "42px", border: `1px solid ${hasDateFilter ? "#6366f1" : "#e5e5e5"}`, borderRadius: "10px", padding: "0 14px", background: hasDateFilter ? "#f5f3ff" : "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px", fontWeight: 600, fontSize: "13px", color: hasDateFilter ? "#6366f1" : "#555" }}
+          >
+            <FaCalendarAlt style={{ color: hasDateFilter ? "#6366f1" : "#aaa", fontSize: "13px" }} />
+            {hasDateFilter ? `${startDate || "—"} → ${endDate || "—"}` : "Date Range"}
+            {hasDateFilter
+              ? <MdClose style={{ marginLeft: "4px", color: "#6366f1", fontSize: "14px" }} onClick={(e) => { e.stopPropagation(); clearDateRange(); }} />
+              : <FaChevronDown style={{ marginLeft: "4px", fontSize: "11px", color: "#aaa" }} />
+            }
+          </button>
+          {showDatePicker && (
+            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#fff", border: "1px solid #edf1ee", borderRadius: "12px", zIndex: 1000, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", padding: "16px", minWidth: "280px" }}>
+              <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: "13px", color: "#111827" }}>Filter by Date Range</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div>
+                  <label style={{ fontSize: "11px", color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "4px" }}>From</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    max={endDate || undefined}
+                    onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+                    style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e5e5", borderRadius: "8px", fontSize: "13px", color: "#111827" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "11px", color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "4px" }}>To</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={startDate || undefined}
+                    onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+                    style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e5e5", borderRadius: "8px", fontSize: "13px", color: "#111827" }}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button onClick={clearDateRange} style={{ flex: 1, padding: "8px", border: "1px solid #e5e5e5", borderRadius: "8px", background: "#fff", fontSize: "13px", cursor: "pointer", color: "#6b7280", fontWeight: 600 }}>Clear</button>
+                  <button onClick={() => setShowDatePicker(false)} style={{ flex: 1, padding: "8px", border: "none", borderRadius: "8px", background: "#6366f1", fontSize: "13px", cursor: "pointer", color: "#fff", fontWeight: 600 }}>Apply</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sort */}
         <div style={{ position: "relative" }} ref={sortRef}>
           <button
             onClick={() => setShowSortDropdown(!showSortDropdown)}
-            style={{ height: "42px", border: `1px solid ${sortType ? "#1E8E3E" : "#e5e5e5"}`, borderRadius: "10px", padding: "0 14px", background: sortType ? "#f0f9f3" : "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px", minWidth: "130px", fontWeight: 600, fontSize: "13px", color: sortType ? "#1E8E3E" : "#555" }}
+            style={{ height: "42px", border: `1px solid ${sortType ? "#1E8E3E" : "#e5e5e5"}`, borderRadius: "10px", padding: "0 14px", background: sortType ? "#f0f9f3" : "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px", minWidth: "140px", fontWeight: 600, fontSize: "13px", color: sortType ? "#1E8E3E" : "#555" }}
           >
             <FaSort style={{ color: sortType ? "#1E8E3E" : "#aaa", fontSize: "13px" }} />
-            {sortType === "a-z" ? "Sort: A–Z" : sortType === "z-a" ? "Sort: Z–A" : "Sort By"}
+            {sortType ? `Sort: ${SORT_LABEL[sortType]}` : "Sort By"}
             <FaChevronDown style={{ marginLeft: "auto", fontSize: "11px", color: "#aaa" }} />
           </button>
           {showSortDropdown && (
-            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#fff", border: "1px solid #edf1ee", borderRadius: "12px", minWidth: "140px", zIndex: 1000, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", padding: "6px" }}>
-              {[{ key: "a-z", label: "A — Z" }, { key: "z-a", label: "Z — A" }].map(({ key, label }) => (
+            <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#fff", border: "1px solid #edf1ee", borderRadius: "12px", minWidth: "160px", zIndex: 1000, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", padding: "6px" }}>
+              {SORT_OPTIONS.map(({ key, label }) => (
                 <div key={key} onClick={() => { setSortType(key); setShowSortDropdown(false); setCurrentPage(1); }}
                   style={{ padding: "9px 14px", cursor: "pointer", borderRadius: "8px", fontSize: "13px", fontWeight: sortType === key ? 700 : 500, color: sortType === key ? "#1E8E3E" : "#444", background: sortType === key ? "#f0f9f3" : "transparent" }}
                 >{label}</div>
@@ -173,9 +412,45 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
             </div>
           )}
         </div>
+
+        {/* Export Excel */}
+        <button
+          onClick={handleExportExcel}
+          disabled={isExporting}
+          style={{ height: "42px", border: "1px solid #16a34a", borderRadius: "10px", padding: "0 16px", background: isExporting ? "#f0f9f3" : "#16a34a", cursor: isExporting ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, fontSize: "13px", color: isExporting ? "#16a34a" : "#fff", whiteSpace: "nowrap", transition: "all 0.2s" }}
+        >
+          <FaFileExcel style={{ fontSize: "15px" }} />
+          {isExporting ? "Exporting..." : "Export Excel"}
+        </button>
       </div>
 
-      {/* Table */}
+      {/* Active filters strip */}
+      {(hasDateFilter || sortType || statusFilter) && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>Active filters:</span>
+          {statusFilter && (
+            <span style={{ background: "#fffbeb", color: "#d97706", borderRadius: "20px", padding: "3px 10px", fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: statusFilter === "active" ? "#16a34a" : "#ef4444" }} />
+              {statusFilter === "active" ? "Active" : "Blocked"}
+              <MdClose style={{ cursor: "pointer", fontSize: "13px" }} onClick={() => { setStatusFilter(""); setCurrentPage(1); }} />
+            </span>
+          )}
+          {hasDateFilter && (
+            <span style={{ background: "#f5f3ff", color: "#6366f1", borderRadius: "20px", padding: "3px 10px", fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
+              {startDate || "—"} → {endDate || "—"}
+              <MdClose style={{ cursor: "pointer", fontSize: "13px" }} onClick={clearDateRange} />
+            </span>
+          )}
+          {sortType && (
+            <span style={{ background: "#f0f9f3", color: "#1E8E3E", borderRadius: "20px", padding: "3px 10px", fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
+              {SORT_LABEL[sortType]}
+              <MdClose style={{ cursor: "pointer", fontSize: "13px" }} onClick={() => setSortType("")} />
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── Table ── */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "60px 20px" }}>
           <div className="spinner-border" style={{ color: "#1E8E3E", width: "2.5rem", height: "2.5rem" }} role="status" />
@@ -205,13 +480,15 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                       onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#fafcfa")}
                     >
                       {/* # */}
-                      <td style={{ padding: "10px 14px", fontSize: "13px", fontWeight: 700, color: "#1E8E3E", verticalAlign: "middle", width: "48px", maxWidth: "48px" }}>#{d.id}</td>
+                      <td style={{ padding: "10px 14px", fontSize: "13px", fontWeight: 700, color: "#1E8E3E", verticalAlign: "middle", width: "48px", maxWidth: "48px" }}>
+                        {(pagination.page - 1) * pagination.limit + i + 1}
+                      </td>
 
                       {/* Dietitian — avatar + name + joined */}
                       <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                           {(d.avatar_url || d.documents?.profile_photo) ? (
-                            <img src={d.avatar_url || d.documents?.profile_photo} alt={d.full_name} style={{ width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee", flexShrink: 0 }} />
+                            <img src={d.avatar_url || d.documents?.profile_photo} alt={d.full_name} referrerPolicy="no-referrer" style={{ width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee", flexShrink: 0 }} />
                           ) : (
                             <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #1E8E3E, #4ade80)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "14px", flexShrink: 0 }}>
                               {(d.full_name || "D").charAt(0).toUpperCase()}
@@ -254,7 +531,6 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                       {/* Experience */}
                       <td style={{ padding: "10px 14px", fontSize: "11px", color: "#666", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={d.experience || ""}>{d.experience || "—"}</td>
 
-
                       {/* Active */}
                       <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
                         <span style={{ background: d.is_active ? "#dcfce7" : "#fee2e2", color: d.is_active ? "#16a34a" : "#ef4444", borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}>
@@ -278,7 +554,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                           {/* Quick Verify — requests list only */}
                           {showVerify && (
                             <button
-                              onClick={() => { setSelectedDietitian(d); handleVerifyDirect(d); }}
+                              onClick={() => handleVerifyDirect(d)}
                               title="Verify"
                               style={{ height: "32px", borderRadius: "8px", background: "#f0f9f3", border: "1px solid rgba(30,142,62,0.3)", display: "flex", alignItems: "center", gap: "5px", padding: "0 10px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "#1E8E3E", transition: "all 0.2s" }}
                               onMouseEnter={(e) => { e.currentTarget.style.background = "#1E8E3E"; e.currentTarget.style.color = "#fff"; }}
@@ -331,11 +607,21 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
         <div style={{ textAlign: "center", padding: "60px 20px", borderRadius: "12px", border: "1px solid #edf1ee" }}>
           <div style={{ fontSize: "48px", marginBottom: "16px" }}>{showVerify ? "📋" : "🧑‍⚕️"}</div>
           <h5 style={{ fontWeight: 700, color: "#333", marginBottom: "8px" }}>{showVerify ? "No Pending Requests" : "No Dietitians Found"}</h5>
-          <p style={{ fontSize: "14px", color: "#999" }}>{debouncedSearch ? `No results for "${debouncedSearch}"` : emptyLabel}</p>
+          <p style={{ fontSize: "14px", color: "#999" }}>
+            {debouncedSearch
+              ? `No results for "${debouncedSearch}"`
+              : statusFilter === "active"
+              ? "No active dietitians found."
+              : statusFilter === "blocked"
+              ? "No blocked dietitians found."
+              : hasDateFilter
+              ? "No dietitians found in the selected date range."
+              : emptyLabel}
+          </p>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* ── Delete Confirmation Modal ── */}
       <Modal show={showDeleteModal} onHide={() => { setShowDeleteModal(false); setDeleteTarget(null); }} size="sm" centered>
         <Modal.Body style={{ padding: "32px 24px", textAlign: "center" }}>
           <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
@@ -354,7 +640,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
         </Modal.Body>
       </Modal>
 
-      {/* Detail Modal */}
+      {/* ── Detail Modal ── */}
       <Modal show={showDetail} onHide={() => setShowDetail(false)} size="lg" centered scrollable>
         <Modal.Header closeButton style={{ background: "#1E8E3E", color: "#fff", borderBottom: "none", padding: "1.25rem 1.75rem" }}>
           <Modal.Title style={{ fontWeight: 700, fontSize: "1.1rem" }}>
@@ -370,7 +656,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                 {/* Header card */}
                 <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: "18px" }}>
                   {(d.avatar_url || d.documents?.profile_photo) ? (
-                    <img src={d.avatar_url || d.documents?.profile_photo} alt={d.full_name} style={{ width: "72px", height: "72px", borderRadius: "50%", objectFit: "cover", border: "3px solid #edf1ee" }} />
+                    <img src={d.avatar_url || d.documents?.profile_photo} alt={d.full_name} referrerPolicy="no-referrer" style={{ width: "72px", height: "72px", borderRadius: "50%", objectFit: "cover", border: "3px solid #edf1ee" }} />
                   ) : (
                     <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "linear-gradient(135deg, #1E8E3E, #4ade80)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "26px", flexShrink: 0 }}>
                       {(d.full_name || "D").charAt(0).toUpperCase()}

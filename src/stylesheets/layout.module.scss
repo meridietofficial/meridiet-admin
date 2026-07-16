@@ -40,10 +40,17 @@
   width: 100%;
   border-right: none;
   padding: 20px 0 12px;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Scrollable nav items area — grows to fill space, logout stays below */
+.sidebarScrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 
   &::-webkit-scrollbar {
     width: 3px;
@@ -217,6 +224,9 @@
   color: var(--sidebar-text, rgba(255,255,255,0.65));
   flex: 1;
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebarNavPip {

@@ -13,9 +13,15 @@ function adaptAIPlanToDocFormat(planData) {
   const di   = planData?.delivery_info || {};
   const form = plan.form || {};
 
+  // If the API already returns a pre-built client_profile, use it as a fallback
+  // for any fields that aren't present in plan.form
+  const ecp = plan.client_profile || {};
+  const epi = ecp.personal_information || {};
+  const eg  = ecp.health_and_fitness_goals || {};
+
   // Normalise height/weight to standard units for DietPlanDocument
   const heightCm = form.height
-    ? (form.height_unit === "ft"
+    ? (form.height_unit === "ft_in"
         ? Math.round(form.height * 30.48)
         : Number(form.height))
     : plan.height_cm ?? null;
@@ -44,11 +50,11 @@ function adaptAIPlanToDocFormat(planData) {
         age:           form.age,
         gender:        form.gender,
         date_of_birth: form.dob || form.date_of_birth,
-        height:        form.height ? `${form.height} ${form.height_unit || "cm"}` : (heightCm ? `${heightCm} cm` : null),
+        height:        form.height ? `${form.height} ${form.height_unit === "ft_in" ? "ft" : (form.height_unit || "cm")}` : (heightCm ? `${heightCm} cm` : null),
         phone:         di.whatsapp        || form.phone,
         email:         di.email           || form.email,
-        city:          form.city,
-        state:         form.state,
+        city:          form.city  || epi.city  || plan.city  || di.city  || null,
+        state:         form.state || epi.state || plan.state || di.state || null,
       },
       current_vitals: {
         weight_kg:      weightKg,
@@ -63,8 +69,8 @@ function adaptAIPlanToDocFormat(planData) {
       health_and_fitness_goals: {
         goals:        form.goals?.length ? form.goals : (plan.primary_goal ? [plan.primary_goal] : []),
         plan_type:    plan.plan_duration,
-        health_notes: form.health_notes,
-        final_notes:  form.final_notes,
+        health_notes: form.health_notes || eg.health_notes || null,
+        final_notes:  form.final_notes  || eg.final_notes  || null,
       },
       lifestyle_overview: {
         activity_level:   form.activity_level,

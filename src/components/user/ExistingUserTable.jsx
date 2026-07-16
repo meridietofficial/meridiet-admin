@@ -416,7 +416,7 @@ export default function ExistingUserTable({ onStatsChange }) {
                       <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 600, color: "#111827", verticalAlign: "middle", whiteSpace: "nowrap" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                           {user.avatar_url ? (
-                            <img src={user.avatar_url} alt={user.full_name} style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee", flexShrink: 0 }} />
+                            <img src={user.avatar_url} alt={user.full_name} referrerPolicy="no-referrer" style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee", flexShrink: 0 }} />
                           ) : (
                             <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "linear-gradient(135deg, #1E8E3E, #4ade80)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "14px", flexShrink: 0 }}>
                               {(user.full_name || "U").charAt(0).toUpperCase()}
@@ -547,7 +547,7 @@ export default function ExistingUserTable({ onStatsChange }) {
             <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid #edf1ee" }}>
                 {detailUser.avatar_url ? (
-                  <img src={detailUser.avatar_url} alt={detailUser.full_name} style={{ width: "56px", height: "56px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee" }} />
+                  <img src={detailUser.avatar_url} alt={detailUser.full_name} referrerPolicy="no-referrer" style={{ width: "56px", height: "56px", borderRadius: "50%", objectFit: "cover", border: "2px solid #edf1ee" }} />
                 ) : (
                   <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "linear-gradient(135deg, #1E8E3E, #4ade80)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "22px", flexShrink: 0 }}>
                     {(detailUser.full_name || "U").charAt(0).toUpperCase()}
