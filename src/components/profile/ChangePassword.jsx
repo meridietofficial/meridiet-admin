@@ -3,6 +3,7 @@ import API from "../../helpers/api";
 import toast from "react-hot-toast";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { FieldLabel } from "./FieldLabel";
+import * as auth from "../../helpers/auth";
 
 const PasswordInput = ({ label, value, onChange, show, onToggle, placeholder }) => (
   <div style={{ flex: 1, minWidth: "200px" }}>
@@ -55,10 +56,10 @@ export default function ChangePassword() {
     if (newPass !== conPass) { toast.error("New passwords do not match."); return; }
 
     setLoading(true);
-    API.apiPut("changePassword", { current_password: pass, new_password: newPass })
+    API.apiPatch("changePassword", { current_password: pass, new_password: newPass })
       .then((response) => {
-        toast.success(response?.data?.message || "Password changed successfully.");
-        setPass(""); setnewPass(""); setconPass("");
+        toast.success(response?.data?.message || "Password changed successfully. Please log in again.");
+        setTimeout(() => auth.logout(), 1500);
       })
       .catch((err) => {
         const msg = err?.response?.status === 401

@@ -29,7 +29,9 @@ export default function User() {
   const [selectedImage, setSelectedImage] = useState(() => user?.avatar_url || null);
   const fileInputRef = useRef(null);
 
-  const [loading, setLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState(user?.phone_number || "");
@@ -45,7 +47,7 @@ export default function User() {
 
   const fetchAdminProfile = async () => {
     try {
-      setLoading(true);
+      setIsFetching(true);
       const response = await getAdminProfile();
       if (response.success && response.data) {
         const d = response.data;
@@ -58,7 +60,7 @@ export default function User() {
     } catch {
       // keep values seeded from localStorage
     } finally {
-      setLoading(false);
+      setIsFetching(false);
     }
   };
 
@@ -66,7 +68,7 @@ export default function User() {
 
   const saveProfile = async (avatarUrl) => {
     try {
-      setLoading(true);
+      setIsSaving(true);
       const payload = {
         full_name: fullName.trim(),
         phone_code: phoneCode,
@@ -84,7 +86,7 @@ export default function User() {
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to update profile");
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -93,7 +95,7 @@ export default function User() {
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Please select a valid image file"); return; }
     if (file.size > 15 * 1024 * 1024) { toast.error("Image size must be under 15 MB"); return; }
-    setLoading(true);
+    setIsUploading(true);
     try {
       const uniqueFileName = `profile/${uuidv4()}_${file.name}`;
       const { uploadFileToS3 } = await import("../../utils/S3");
@@ -105,7 +107,7 @@ export default function User() {
     } catch (error) {
       toast.error(error.message || "Failed to upload image");
     } finally {
-      setLoading(false);
+      setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -156,7 +158,7 @@ export default function User() {
             </div>
           )}
           <div
-            onClick={() => !loading && fileInputRef.current?.click()}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
             style={{ position: "absolute", bottom: 0, right: 0, width: "26px", height: "26px", borderRadius: "50%", background: "#1E8E3E", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "2px solid #fff", boxShadow: "0 2px 6px rgba(30,142,62,0.4)" }}
             title="Change photo"
           >
@@ -166,13 +168,13 @@ export default function User() {
         <div style={{ flex: 1 }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: "16px", color: "#111827" }}>{fullName || "Admin"}</p>
           <p style={{ margin: "2px 0 12px", fontSize: "13px", color: "#1E8E3E", fontWeight: 500 }}>Administrator</p>
-          <button onClick={() => !loading && fileInputRef.current?.click()} disabled={loading}
+          <button onClick={() => !isUploading && fileInputRef.current?.click()} disabled={isUploading}
             style={{ height: "36px", padding: "0 16px", borderRadius: "8px", border: "1px solid #1E8E3E", background: "#f0f9f3", color: "#1E8E3E", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            {loading ? "UPLOADING..." : "UPLOAD NEW PHOTO"}
+            {isUploading ? "UPLOADING..." : "UPLOAD NEW PHOTO"}
           </button>
           <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#bbb" }}>PNG, JPEG — max 15 MB</p>
         </div>
-        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: "none" }} disabled={loading} />
+        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: "none" }} disabled={isUploading} />
       </div>
 
       {/* Full name */}
@@ -255,9 +257,9 @@ export default function User() {
 
       {/* Save */}
       <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "4px" }}>
-        <button onClick={() => saveProfile(selectedImage)} disabled={loading}
-          style={{ height: "44px", padding: "0 28px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1E8E3E, #166C31)", color: "#fff", fontSize: "13px", fontWeight: 700, cursor: "pointer", letterSpacing: "0.5px", boxShadow: "0 4px 14px rgba(30,142,62,0.3)", opacity: loading ? 0.7 : 1 }}>
-          {loading ? "SAVING..." : "SAVE CHANGES"}
+        <button onClick={() => saveProfile(selectedImage)} disabled={isSaving}
+          style={{ height: "44px", padding: "0 28px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1E8E3E, #166C31)", color: "#fff", fontSize: "13px", fontWeight: 700, cursor: "pointer", letterSpacing: "0.5px", boxShadow: "0 4px 14px rgba(30,142,62,0.3)", opacity: isSaving ? 0.7 : 1 }}>
+          {isSaving ? "SAVING..." : "SAVE CHANGES"}
         </button>
       </div>
     </SectionCard>
