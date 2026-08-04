@@ -793,3 +793,8 @@ tr.activeRow {
     min-width: 44px;
   }
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

@@ -29,6 +29,17 @@ import CouponManagement from "./pages/dashboard/CouponManagement";
 import CouponRedemptions from "./pages/dashboard/CouponRedemptions";
 import Appointments from "./pages/dashboard/Appointments";
 import CourseManagement from "./pages/dashboard/CourseManagement";
+import HealthGoalsList from "./pages/dashboard/ai-diet-plan/HealthGoalsList";
+import DiseaseList from "./pages/dashboard/ai-diet-plan/DiseaseList";
+import FoodAllergiesList from "./pages/dashboard/ai-diet-plan/FoodAllergiesList";
+import CuisineList from "./pages/dashboard/ai-diet-plan/CuisineList";
+import MedicalConditionsList from "./pages/dashboard/ai-diet-plan/MedicalConditionsList";
+import BroadcastEmailPage from "./pages/dashboard/BroadcastEmail";
+import Earnings from "./pages/dashboard/Earnings";
+import Career from "./pages/dashboard/Career";
+import OfflineAppointments from "./pages/dashboard/OfflineAppointments";
+import OfflineDietCharts from "./pages/dashboard/OfflineDietCharts";
+import DietitianPlanView from "./pages/dashboard/DietitianPlanView";
 
 const LoaderHandler = () => {
   const { loading } = useLoader();
@@ -80,7 +91,18 @@ function App() {
                 <Route path="coupon-management" element={<CouponManagement />} />
                 <Route path="coupon-redemptions" element={<CouponRedemptions />} />
                 <Route path="appointments" element={<Appointments />} />
+                <Route path="offline-appointments" element={<OfflineAppointments />} />
+                <Route path="offline-diet-charts" element={<OfflineDietCharts />} />
+                <Route path="dietitian-plans/:id/view" element={<DietitianPlanView />} />
                 <Route path="course-management" element={<CourseManagement />} />
+                <Route path="ai-diet-plan/health-goals" element={<HealthGoalsList />} />
+                <Route path="ai-diet-plan/diseases" element={<DiseaseList />} />
+                <Route path="ai-diet-plan/food-allergies" element={<FoodAllergiesList />} />
+                <Route path="ai-diet-plan/cuisines" element={<CuisineList />} />
+                <Route path="ai-diet-plan/medical-conditions" element={<MedicalConditionsList />} />
+                <Route path="broadcast-email" element={<BroadcastEmailPage />} />
+                <Route path="earnings" element={<Earnings />} />
+                <Route path="career" element={<Career />} />
               </Route>
             </Routes>
 

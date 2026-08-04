@@ -12,6 +12,8 @@ const apiKeys = {
   verifyDietitian: "admin/dietitians/verify",
   toggleDietitianStatus: "admin/toggle-block-dietitian",
   deleteDietitian: "admin/delete-dietitian",
+  registerDietitian: "admin/dietitians/register",
+  awsKeys: "dietitian/aws-keys",
 
   //diet chart requests
   dietFormRequests: "admin/diet-form-requests",
@@ -42,6 +44,18 @@ const apiKeys = {
   // AI-generated diet plans (new flow: form → AI → admin review → send)
   aiDietPlans: "admin/diet-plans",
 
+  // Earnings
+  earnings: "admin/earnings",
+
+  // Broadcast email
+  broadcastRecipients: "admin/broadcast/recipients",
+  broadcastSend: "admin/broadcast/send",
+  broadcastHistory: "admin/broadcast/history",
+  broadcastDetail: "admin/broadcast/history",
+
+  // Career
+  careerJobs: "admin/career/jobs",
+  careerApplications: "admin/career/applications",
 };
 
 export default apiKeys;

@@ -3,9 +3,10 @@ import { useRouter } from "../../helpers/useRouter";
 import { Table, FormControl } from "react-bootstrap";
 import { FaSort, FaChevronDown } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
-import { LuBrainCircuit, LuSend, LuFileText } from "react-icons/lu";
+import { LuBrainCircuit, LuSend, LuFileText, LuRefreshCw } from "react-icons/lu";
 import GlobalPagination from "../common/GlobalPagination";
 import API from "../../helpers/api";
+import axios from "../../helpers/api/instance";
 import toast from "react-hot-toast";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -94,6 +95,7 @@ export default function AIDietPlanTable({ activeTab, onTabChange, onCountsChange
   const [loading, setLoading]                   = useState(false);
   const [sortType, setSortType]                 = useState("new");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [retryingId, setRetryingId]             = useState(null);
   const sortRef = useRef(null);
 
   // Debounce search
@@ -152,6 +154,20 @@ export default function AIDietPlanTable({ activeTab, onTabChange, onCountsChange
       setTabCounts(counts);
       if (onCountsChange) onCountsChange(counts);
     });
+  };
+
+  const handleRetry = async (planId) => {
+    setRetryingId(planId);
+    try {
+      await axios.post(`admin/diet-plans/${planId}/retry`);
+      toast.success("Diet plan generation restarted! It will appear as 'Pending Review' once ready (usually 5–10 minutes).");
+      fetchPlans();
+      fetchTabCounts();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to retry diet plan generation.");
+    } finally {
+      setRetryingId(null);
+    }
   };
 
   return (
@@ -314,6 +330,19 @@ export default function AIDietPlanTable({ activeTab, onTabChange, onCountsChange
                                 onMouseLeave={(e) => { e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#3b82f6"; }}
                               >
                                 <LuFileText size={12} /> View Plan
+                              </button>
+                            )}
+                            {/* Retry — only for failed plans */}
+                            {p.status === "failed" && (
+                              <button
+                                onClick={() => handleRetry(p.id)}
+                                disabled={retryingId === p.id}
+                                style={{ height: "32px", borderRadius: "8px", background: retryingId === p.id ? "#f3f4f6" : "#FEF2F2", border: "1px solid rgba(239,68,68,0.3)", display: "flex", alignItems: "center", gap: "5px", padding: "0 10px", cursor: retryingId === p.id ? "not-allowed" : "pointer", fontSize: "12px", fontWeight: 700, color: retryingId === p.id ? "#9ca3af" : "#EF4444", transition: "all 0.2s", whiteSpace: "nowrap" }}
+                                onMouseEnter={(e) => { if (retryingId !== p.id) { e.currentTarget.style.background = "#EF4444"; e.currentTarget.style.color = "#fff"; } }}
+                                onMouseLeave={(e) => { if (retryingId !== p.id) { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.color = "#EF4444"; } }}
+                              >
+                                <LuRefreshCw size={12} style={{ animation: retryingId === p.id ? "spin 1s linear infinite" : "none" }} />
+                                {retryingId === p.id ? "Retrying…" : "Retry AI"}
                               </button>
                             )}
                           </div>

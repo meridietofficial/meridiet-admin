@@ -48,7 +48,7 @@ const NO_SHOW_TYPE_STYLES = {
   both_no_show:      { bg: "#f5f3ff", color: "#7c3aed", border: "#ddd6fe", label: "Both No-Show" },
 };
 
-// ── Badge components ──────────────────────────────────────────────────────────
+// ── Badges ────────────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const s = STATUS_STYLES[status] || { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb", dot: "#9ca3af" };
   return (
@@ -135,6 +135,18 @@ function SearchBar({ value, onChange, placeholder = "Search..." }) {
   );
 }
 
+function DateRange({ from, to, onFrom, onTo }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <input type="date" value={from} onChange={(e) => onFrom(e.target.value)}
+        style={{ height: "40px", border: "1px solid #e5e5e5", borderRadius: "10px", padding: "0 10px", fontSize: "12.5px", color: "#374151", outline: "none" }} />
+      <span style={{ color: "#9ca3af", fontSize: "12px" }}>to</span>
+      <input type="date" value={to} onChange={(e) => onTo(e.target.value)}
+        style={{ height: "40px", border: "1px solid #e5e5e5", borderRadius: "10px", padding: "0 10px", fontSize: "12.5px", color: "#374151", outline: "none" }} />
+    </div>
+  );
+}
+
 function InfoRow({ label, value, mono }) {
   return (
     <div style={{ background: "#f8f9fa", borderRadius: "10px", padding: "10px 14px" }}>
@@ -163,7 +175,6 @@ function StarRating({ value }) {
     </div>
   );
 }
-
 function TH({ children }) {
   return <th style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "13px", padding: "14px 16px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px" }}>{children}</th>;
 }
@@ -188,7 +199,7 @@ function DietitianCell({ d }) {
       }
       <div>
         <p style={{ margin: 0, fontWeight: 600, fontSize: "13px", color: "#111827" }}>{d?.name || "—"}</p>
-        <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>#{d?.id}</p>
+        <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{d?.phone || "—"}</p>
       </div>
     </div>
   );
@@ -232,56 +243,69 @@ function EmptyState({ msg }) {
   );
 }
 
-// ── Tab constants ─────────────────────────────────────────────────────────────
-const VIEW_TABS = [
-  { value: "no_show_queue",            label: "No-Show Queue",     color: "#c2410c" },
-  { value: "pending_no_show_approval", label: "No-Show Approval",  color: "#7c3aed" },
-  { value: "pending_approval",         label: "Pending Approval",  color: "#d97706" },
-  { value: "all",                      label: "All Appointments",  color: "#1E8E3E" },
-  { value: "payment_history",          label: "Payment History",   color: "#6b7280" },
+// ── Constants ─────────────────────────────────────────────────────────────────
+const MAIN_TABS = [
+  { value: "action_required", label: "Action Required", color: "#d97706" },
+  { value: "all",             label: "All Appointments", color: "#1E8E3E" },
+  { value: "payment_history", label: "Payment History",  color: "#6b7280" },
 ];
-const PAYMENT_TABS = [
-  { value: "",         label: "All" },
-  { value: "paid",     label: "Paid",     color: "#16a34a" },
-  { value: "unpaid",   label: "Unpaid",   color: "#ef4444" },
-  { value: "refunded", label: "Refunded", color: "#7c3aed" },
+
+const ACTION_TYPES = [
+  { value: "pending_payment",    label: "Pending Payment",   color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+  { value: "no_show_queue",      label: "No-Show Queue",     color: "#c2410c", bg: "#fef2f2", border: "#fecaca" },
+  { value: "no_show_approval",   label: "No-Show Approval",  color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
 ];
-const STATUS_TABS = [
-  { value: "",          label: "All" },
-  { value: "pending",   label: "Pending",   color: "#d97706" },
-  { value: "confirmed", label: "Confirmed", color: "#2563eb" },
-  { value: "completed", label: "Completed", color: "#16a34a" },
-  { value: "cancelled", label: "Cancelled", color: "#ef4444" },
-  { value: "missed",    label: "Missed",    color: "#7c3aed" },
+
+const STATUS_OPTIONS = [
+  { value: "",          label: "All Statuses" },
+  { value: "pending",   label: "Pending",   dot: "#d97706" },
+  { value: "confirmed", label: "Confirmed", dot: "#2563eb" },
+  { value: "completed", label: "Completed", dot: "#16a34a" },
+  { value: "cancelled", label: "Cancelled", dot: "#ef4444" },
+  { value: "missed",    label: "Missed",    dot: "#7c3aed" },
 ];
-const NO_SHOW_OPTIONS = [
-  { value: "",          label: "All" },
-  { value: "user",      label: "User No-show",      dot: "#ef4444" },
-  { value: "dietitian", label: "Dietitian No-show",  dot: "#f59e0b" },
-  { value: "any",       label: "Any No-show",        dot: "#6b7280" },
+
+const PAYMENT_OPTIONS = [
+  { value: "",         label: "All Payment" },
+  { value: "paid",     label: "Paid",     dot: "#16a34a" },
+  { value: "unpaid",   label: "Unpaid",   dot: "#ef4444" },
+  { value: "refunded", label: "Refunded", dot: "#7c3aed" },
 ];
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
 export default function AppointmentTable() {
-  // ── Top-level view ──────────────────────────────────────────────────────────
-  const [activeView, setActiveView] = useState("pending_approval");
+  const [activeView, setActiveView] = useState("action_required");
+  const [actionType, setActionType] = useState("pending_payment");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // ── Shared list data ────────────────────────────────────────────────────────
   const [appointments, setAppointments] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
   const [loading, setLoading] = useState(false);
 
-  // ── Pending Approval filters ────────────────────────────────────────────────
-  const [paPage, setPaPage] = useState(1);
-  const [paSearch, setPaSearch] = useState("");
-  const [paSearchInput, setPaSearchInput] = useState("");
-  const [paCommissionPct, setPaCommissionPct] = useState(20);
-  const paTimer = useRef(null);
+  // Commission / penalty (returned by some API responses)
+  const [commissionPct, setCommissionPct] = useState(20);
+  const [penaltyAmount, setPenaltyAmount] = useState(100);
 
-  // ── Payment History filters ─────────────────────────────────────────────────
+  // Action Required filters
+  const [arPage, setArPage] = useState(1);
+  const [arSearch, setArSearch] = useState("");
+  const [arSearchInput, setArSearchInput] = useState("");
+  const arTimer = useRef(null);
+
+  // All Appointments filters
+  const [allPage, setAllPage] = useState(1);
+  const [allSearch, setAllSearch] = useState("");
+  const [allSearchInput, setAllSearchInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const allTimer = useRef(null);
+
+  // Payment History filters
   const [phPage, setPhPage] = useState(1);
   const [phSearch, setPhSearch] = useState("");
   const [phSearchInput, setPhSearchInput] = useState("");
@@ -290,155 +314,101 @@ export default function AppointmentTable() {
   const [phDateTo, setPhDateTo] = useState("");
   const phTimer = useRef(null);
 
-  // ── All Appointments filters ────────────────────────────────────────────────
-  const [currentPage, setCurrentPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [paymentFilter, setPaymentFilter] = useState("");
-  const [noShowFilter, setNoShowFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const allTimer = useRef(null);
-
-  // ── No-Show Queue filters ───────────────────────────────────────────────────
-  const [nsqPage, setNsqPage] = useState(1);
-  const [nsqSearch, setNsqSearch] = useState("");
-  const [nsqSearchInput, setNsqSearchInput] = useState("");
-  const nsqTimer = useRef(null);
-
-  // ── Pending No-Show Approval filters ───────────────────────────────────────
-  const [pnsaPage, setPnsaPage] = useState(1);
-  const [pnsaSearch, setPnsaSearch] = useState("");
-  const [pnsaSearchInput, setPnsaSearchInput] = useState("");
-  const [pnsaCommissionPct, setPnsaCommissionPct] = useState(20);
-  const [pnsaPenaltyAmount, setPnsaPenaltyAmount] = useState(100);
-  const pnsaTimer = useRef(null);
-
-  // ── Modals ──────────────────────────────────────────────────────────────────
+  // Detail modal
   const [showDetail, setShowDetail] = useState(false);
   const [detail, setDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approvingPayment, setApprovingPayment] = useState(false);
 
-  // ── Mark No-Show modal ───────────────────────────────────────────────────────
+  // Mark No-Show modal
   const [showMarkNoShowModal, setShowMarkNoShowModal] = useState(false);
   const [markNoShowAppt, setMarkNoShowAppt] = useState(null);
   const [missedType, setMissedType] = useState("patient_no_show");
   const [missedReason, setMissedReason] = useState("");
   const [markingNoShow, setMarkingNoShow] = useState(false);
 
-  // ── Approve No-Show modal ────────────────────────────────────────────────────
+  // Approve No-Show modal
   const [showApproveNoShowModal, setShowApproveNoShowModal] = useState(false);
   const [approveNoShowAppt, setApproveNoShowAppt] = useState(null);
   const [approvingNoShow, setApprovingNoShow] = useState(false);
 
-  // ── Reset list when view changes ────────────────────────────────────────────
+  // Reset list on view/action-type change
   useEffect(() => {
     setAppointments([]);
     setPagination({ page: 1, limit: 20, total: 0, pages: 1 });
-  }, [activeView]);
+    setArPage(1); setArSearch(""); setArSearchInput("");
+  }, [activeView, actionType]);
 
-  // ── Fetch: Pending Approval ─────────────────────────────────────────────────
+  // ── Fetch: Action Required ──────────────────────────────────────────────────
   useEffect(() => {
-    if (activeView !== "pending_approval") return;
+    if (activeView !== "action_required") return;
     setLoading(true);
-    const p = new URLSearchParams({ page: paPage, limit: 20 });
-    if (paSearch) p.append("search", paSearch);
-    appointmentService.pendingApproval(p.toString())
+    const p = new URLSearchParams({ page: arPage, limit: 20 });
+    if (arSearch) p.append("search", arSearch);
+
+    const call =
+      actionType === "pending_payment"  ? appointmentService.pendingApproval(p.toString()) :
+      actionType === "no_show_queue"    ? appointmentService.noShowQueue(p.toString()) :
+                                          appointmentService.pendingNoShowApproval(p.toString());
+
+    call
       .then((res) => {
         const d = res?.data?.data || {};
         setAppointments(d.appointments || []);
         setPagination(d.pagination || { page: 1, limit: 20, total: 0, pages: 1 });
-        if (d.commission_pct != null) setPaCommissionPct(d.commission_pct);
+        if (d.commission_pct != null) setCommissionPct(d.commission_pct);
+        if (d.penalty_amount != null) setPenaltyAmount(d.penalty_amount);
       })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to fetch pending approvals."))
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to load."))
       .finally(() => setLoading(false));
-  }, [activeView, paPage, paSearch, refreshKey]);
-
-  // ── Fetch: Payment History ──────────────────────────────────────────────────
-  useEffect(() => {
-    if (activeView !== "payment_history") return;
-    setLoading(true);
-    const p = new URLSearchParams({ page: phPage, limit: 20 });
-    if (phSearch) p.append("search", phSearch);
-    if (phDietitianId) p.append("dietitian_id", phDietitianId);
-    if (phDateFrom) p.append("date_from", phDateFrom);
-    if (phDateTo) p.append("date_to", phDateTo);
-    appointmentService.paymentHistory(p.toString())
-      .then((res) => {
-        const d = res?.data?.data || {};
-        setAppointments(d.appointments || []);
-        setPagination(d.pagination || { page: 1, limit: 20, total: 0, pages: 1 });
-      })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to fetch payment history."))
-      .finally(() => setLoading(false));
-  }, [activeView, phPage, phSearch, phDietitianId, phDateFrom, phDateTo, refreshKey]);
+  }, [activeView, actionType, arPage, arSearch, refreshKey]);
 
   // ── Fetch: All Appointments ─────────────────────────────────────────────────
   useEffect(() => {
     if (activeView !== "all") return;
     setLoading(true);
-    const p = new URLSearchParams({ page: currentPage, limit: 20 });
+    const p = new URLSearchParams({ page: allPage, limit: 20 });
     if (statusFilter)  p.append("status", statusFilter);
     if (paymentFilter) p.append("payment_status", paymentFilter);
-    if (noShowFilter)  p.append("no_show", noShowFilter);
     if (dateFrom)      p.append("date_from", dateFrom);
     if (dateTo)        p.append("date_to", dateTo);
-    if (search)        p.append("search", search);
+    if (allSearch)     p.append("search", allSearch);
     appointmentService.list(p.toString())
       .then((res) => {
         const d = res?.data?.data || {};
         setAppointments(d.appointments || []);
         setPagination(d.pagination || { page: 1, limit: 20, total: 0, pages: 1 });
       })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to fetch appointments."))
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to load appointments."))
       .finally(() => setLoading(false));
-  }, [activeView, currentPage, statusFilter, paymentFilter, noShowFilter, dateFrom, dateTo, search, refreshKey]);
+  }, [activeView, allPage, statusFilter, paymentFilter, dateFrom, dateTo, allSearch, refreshKey]);
 
-  // ── Fetch: No-Show Queue ────────────────────────────────────────────────────
+  // ── Fetch: Payment History ──────────────────────────────────────────────────
   useEffect(() => {
-    if (activeView !== "no_show_queue") return;
+    if (activeView !== "payment_history") return;
     setLoading(true);
-    const p = new URLSearchParams({ page: nsqPage, limit: 20 });
-    if (nsqSearch) p.append("search", nsqSearch);
-    appointmentService.noShowQueue(p.toString())
+    const p = new URLSearchParams({ page: phPage, limit: 20 });
+    if (phSearch)      p.append("search", phSearch);
+    if (phDietitianId) p.append("dietitian_id", phDietitianId);
+    if (phDateFrom)    p.append("date_from", phDateFrom);
+    if (phDateTo)      p.append("date_to", phDateTo);
+    appointmentService.paymentHistory(p.toString())
       .then((res) => {
         const d = res?.data?.data || {};
         setAppointments(d.appointments || []);
         setPagination(d.pagination || { page: 1, limit: 20, total: 0, pages: 1 });
       })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to fetch no-show queue."))
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to load payment history."))
       .finally(() => setLoading(false));
-  }, [activeView, nsqPage, nsqSearch, refreshKey]);
-
-  // ── Fetch: Pending No-Show Approval ─────────────────────────────────────────
-  useEffect(() => {
-    if (activeView !== "pending_no_show_approval") return;
-    setLoading(true);
-    const p = new URLSearchParams({ page: pnsaPage, limit: 20 });
-    if (pnsaSearch) p.append("search", pnsaSearch);
-    appointmentService.pendingNoShowApproval(p.toString())
-      .then((res) => {
-        const d = res?.data?.data || {};
-        setAppointments(d.appointments || []);
-        setPagination(d.pagination || { page: 1, limit: 20, total: 0, pages: 1 });
-        if (d.commission_pct != null) setPnsaCommissionPct(d.commission_pct);
-        if (d.penalty_amount != null) setPnsaPenaltyAmount(d.penalty_amount);
-      })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to fetch no-show approvals."))
-      .finally(() => setLoading(false));
-  }, [activeView, pnsaPage, pnsaSearch, refreshKey]);
+  }, [activeView, phPage, phSearch, phDietitianId, phDateFrom, phDateTo, refreshKey]);
 
   // ── Detail modal ────────────────────────────────────────────────────────────
   const openDetail = (id) => {
-    setShowDetail(true);
-    setDetail(null);
-    setLoadingDetail(true);
+    setShowDetail(true); setDetail(null); setLoadingDetail(true);
     appointmentService.get(id)
       .then((res) => setDetail(res?.data?.data || null))
-      .catch((err) => { toast.error(err?.response?.data?.message || "Failed to load appointment."); setShowDetail(false); })
+      .catch((err) => { toast.error(err?.response?.data?.message || "Failed to load."); setShowDetail(false); })
       .finally(() => setLoadingDetail(false));
   };
   const refreshDetail = (id) => {
@@ -446,18 +416,13 @@ export default function AppointmentTable() {
     appointmentService.get(id).then((res) => setDetail(res?.data?.data || null)).catch(() => {}).finally(() => setLoadingDetail(false));
   };
 
-  // ── Approve completed payment ───────────────────────────────────────────────
+  // ── Approve payment ─────────────────────────────────────────────────────────
   const handleApprove = () => {
     if (!detail) return;
     setApprovingPayment(true);
     appointmentService.approvePayment(detail.id)
-      .then(() => {
-        toast.success("Payment approved and credited to dietitian!");
-        setShowApproveModal(false);
-        refreshDetail(detail.id);
-        setRefreshKey((k) => k + 1);
-      })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to approve payment."))
+      .then(() => { toast.success("Payment approved!"); setShowApproveModal(false); refreshDetail(detail.id); setRefreshKey((k) => k + 1); })
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to approve."))
       .finally(() => setApprovingPayment(false));
   };
 
@@ -466,14 +431,8 @@ export default function AppointmentTable() {
     if (!markNoShowAppt || !missedType) return;
     setMarkingNoShow(true);
     appointmentService.markNoShow(markNoShowAppt.id, { missed_type: missedType, missed_reason: missedReason })
-      .then(() => {
-        toast.success("No-show recorded. Appointment moved to approval queue.");
-        setShowMarkNoShowModal(false);
-        setMissedType("patient_no_show");
-        setMissedReason("");
-        setRefreshKey((k) => k + 1);
-      })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to mark no-show."))
+      .then(() => { toast.success("No-show recorded."); setShowMarkNoShowModal(false); setMissedType("patient_no_show"); setMissedReason(""); setRefreshKey((k) => k + 1); })
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed."))
       .finally(() => setMarkingNoShow(false));
   };
 
@@ -485,67 +444,43 @@ export default function AppointmentTable() {
       .then((res) => {
         const d = res?.data?.data || {};
         const msg =
-          d.action === "dietitian_credited"
-            ? `Dietitian credited ₹${d.amount_credited}!`
-            : d.action === "patient_refunded_and_dietitian_penalised"
-            ? `Patient refunded ₹${d.refund_amount}. Dietitian penalized ₹${d.penalty_deducted}.`
-            : `Dietitian penalized ₹${d.penalty_deducted}. No refund issued.`;
+          d.action === "dietitian_credited" ? `Dietitian credited ₹${d.amount_credited}!`
+          : d.action === "patient_refunded_and_dietitian_penalised" ? `Patient refunded ₹${d.refund_amount}. Dietitian penalized ₹${d.penalty_deducted}.`
+          : `Dietitian penalized ₹${d.penalty_deducted}. No refund issued.`;
         toast.success(msg);
         setShowApproveNoShowModal(false);
         setRefreshKey((k) => k + 1);
       })
-      .catch((err) => toast.error(err?.response?.data?.message || "Failed to approve no-show."))
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed."))
       .finally(() => setApprovingNoShow(false));
   };
 
-  // ── Debounced search handlers ───────────────────────────────────────────────
-  const handlePaSearch = (val) => {
-    setPaSearchInput(val);
-    clearTimeout(paTimer.current);
-    paTimer.current = setTimeout(() => { setPaSearch(val); setPaPage(1); }, 500);
+  // ── Debounced search ────────────────────────────────────────────────────────
+  const handleArSearch = (val) => {
+    setArSearchInput(val);
+    clearTimeout(arTimer.current);
+    arTimer.current = setTimeout(() => { setArSearch(val); setArPage(1); }, 500);
+  };
+  const handleAllSearch = (val) => {
+    setAllSearchInput(val);
+    clearTimeout(allTimer.current);
+    allTimer.current = setTimeout(() => { setAllSearch(val); setAllPage(1); }, 500);
   };
   const handlePhSearch = (val) => {
     setPhSearchInput(val);
     clearTimeout(phTimer.current);
     phTimer.current = setTimeout(() => { setPhSearch(val); setPhPage(1); }, 500);
   };
-  const handleAllSearch = (val) => {
-    setSearchInput(val);
-    clearTimeout(allTimer.current);
-    allTimer.current = setTimeout(() => { setSearch(val); setCurrentPage(1); }, 500);
-  };
-  const handleNsqSearch = (val) => {
-    setNsqSearchInput(val);
-    clearTimeout(nsqTimer.current);
-    nsqTimer.current = setTimeout(() => { setNsqSearch(val); setNsqPage(1); }, 500);
-  };
-  const handlePnsaSearch = (val) => {
-    setPnsaSearchInput(val);
-    clearTimeout(pnsaTimer.current);
-    pnsaTimer.current = setTimeout(() => { setPnsaSearch(val); setPnsaPage(1); }, 500);
-  };
 
   const clearAllFilters = () => {
-    setStatusFilter(""); setPaymentFilter(""); setNoShowFilter("");
-    setDateFrom(""); setDateTo(""); setSearch(""); setSearchInput(""); setCurrentPage(1);
+    setStatusFilter(""); setPaymentFilter("");
+    setDateFrom(""); setDateTo(""); setAllSearch(""); setAllSearchInput(""); setAllPage(1);
   };
   const clearPhFilters = () => {
     setPhSearch(""); setPhSearchInput(""); setPhDietitianId(""); setPhDateFrom(""); setPhDateTo(""); setPhPage(1);
   };
-
-  const hasAllFilters = statusFilter || paymentFilter || noShowFilter || dateFrom || dateTo || search;
-  const hasPhFilters = phSearch || phDietitianId || phDateFrom || phDateTo;
-
-  // ── Date range picker reusable ─────────────────────────────────────────────
-  const DateRange = ({ from, to, onFrom, onTo }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-      <input type="date" value={from} onChange={(e) => onFrom(e.target.value)}
-        style={{ height: "40px", border: "1px solid #e5e5e5", borderRadius: "10px", padding: "0 10px", fontSize: "12.5px", color: "#374151", outline: "none" }} />
-      <span style={{ color: "#9ca3af", fontSize: "12px" }}>to</span>
-      <input type="date" value={to} onChange={(e) => onTo(e.target.value)}
-        style={{ height: "40px", border: "1px solid #e5e5e5", borderRadius: "10px", padding: "0 10px", fontSize: "12.5px", color: "#374151", outline: "none" }} />
-    </div>
-  );
+  const hasAllFilters = statusFilter || paymentFilter || dateFrom || dateTo || allSearch;
+  const hasPhFilters  = phSearch || phDietitianId || phDateFrom || phDateTo;
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  RENDER
@@ -554,14 +489,13 @@ export default function AppointmentTable() {
     <div>
       <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
 
-        {/* ── Top-level view tabs ── */}
+        {/* ── Main tabs ── */}
         <div style={{ display: "flex", borderBottom: "2px solid #f0f0f0", marginBottom: "20px", gap: "2px", flexWrap: "wrap" }}>
-          {VIEW_TABS.map((tab) => {
+          {MAIN_TABS.map((tab) => {
             const active = activeView === tab.value;
             return (
-              <button key={tab.value}
-                onClick={() => setActiveView(tab.value)}
-                style={{ padding: "10px 24px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13.5px", color: active ? tab.color : "#6b7280", borderBottom: `2.5px solid ${active ? tab.color : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap" }}>
+              <button key={tab.value} onClick={() => setActiveView(tab.value)}
+                style={{ padding: "10px 28px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13.5px", color: active ? tab.color : "#6b7280", borderBottom: `2.5px solid ${active ? tab.color : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap" }}>
                 {tab.label}
               </button>
             );
@@ -569,286 +503,255 @@ export default function AppointmentTable() {
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            VIEW 1 — NO-SHOW QUEUE
+            TAB 1 — ACTION REQUIRED
         ══════════════════════════════════════════════════════════════════ */}
-        {activeView === "no_show_queue" && (
+        {activeView === "action_required" && (
           <>
-            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "10px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#991b1b" }}>
-              <FaBan size={14} color="#ef4444" />
-              <span>Confirmed appointments past their slot time (30 min grace) where at least one party may not have joined. Review call tracking and mark who didn't show.</span>
+            {/* Type selector */}
+            <div style={{ display: "flex", gap: "8px", marginBottom: "18px", flexWrap: "wrap" }}>
+              {ACTION_TYPES.map((t) => {
+                const active = actionType === t.value;
+                return (
+                  <button key={t.value} onClick={() => setActionType(t.value)}
+                    style={{ padding: "7px 18px", borderRadius: "20px", border: `1.5px solid ${active ? t.color : "#e5e7eb"}`, background: active ? t.bg : "#fff", color: active ? t.color : "#6b7280", fontWeight: active ? 700 : 500, fontSize: "12.5px", cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap" }}>
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
 
-            <div style={{ display: "flex", gap: "10px", marginBottom: "16px", alignItems: "center", flexWrap: "wrap" }}>
-              <SearchBar value={nsqSearchInput} onChange={handleNsqSearch} placeholder="Search patient name, email, phone..." />
+            {/* Context banner */}
+            {actionType === "pending_payment" && (
+              <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px", padding: "10px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#92400e" }}>
+                <MdPayment size={16} color="#d97706" />
+                Completed appointments with collected payment waiting for your approval to credit the dietitian.
+              </div>
+            )}
+            {actionType === "no_show_queue" && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "10px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#991b1b" }}>
+                <FaBan size={14} color="#ef4444" />
+                Confirmed appointments past their slot time (30 min grace). Review and mark who didn't show up.
+              </div>
+            )}
+            {actionType === "no_show_approval" && (
+              <div style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: "10px", padding: "10px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#5b21b6" }}>
+                <MdPayment size={16} color="#7c3aed" />
+                Missed appointments waiting for financial action — refund, credit, or penalty based on who didn't show.
+              </div>
+            )}
+
+            {/* Search */}
+            <div style={{ marginBottom: "16px" }}>
+              <SearchBar value={arSearchInput} onChange={handleArSearch} placeholder="Search patient name, email, phone..." />
             </div>
 
-            {loading ? <LoadingState /> : appointments.length === 0 ? <EmptyState msg="No appointments in the no-show queue." /> : (
-              <>
-                <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                  <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1050px" }}>
-                    <thead>
-                      <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "Session", "Patient Joined", "Dietitian Joined", "Fee", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
-                    </thead>
-                    <tbody>
-                      {appointments.map((a, i) => {
-                        const ct = a.call_tracking || {};
-                        const patJoined = !!ct.user_joined_at;
-                        const dJoined = !!ct.dietitian_joined_at;
-                        const suggested =
-                          ct.patient_no_show && ct.dietitian_no_show ? "both_no_show"
-                          : ct.dietitian_no_show ? "dietitian_no_show"
-                          : "patient_no_show";
-                        return (
-                          <TR key={a.id} index={i}>
-                            <TD style={{ fontWeight: 700, color: "#c2410c", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
-                            <TD>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
-                              <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
-                            </TD>
-                            <TD><DietitianCell d={a.dietitian} /></TD>
-                            <TD style={{ whiteSpace: "nowrap" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
-                                <LuCalendarDays size={12} color="#c2410c" /> {formatDate(a.appointment_date)}
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
-                                <LuClock size={11} /> {a.slot} · {a.duration}min
-                              </div>
-                            </TD>
-                            <TD><SessionBadge type={a.session_type} /></TD>
-                            <TD>
-                              <span style={{ background: patJoined ? "#f0fdf4" : "#fef2f2", color: patJoined ? "#16a34a" : "#ef4444", border: `1px solid ${patJoined ? "#bbf7d0" : "#fecaca"}`, borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>
-                                {patJoined ? "Joined" : "Didn't join"}
-                              </span>
-                              {ct.user_joined_at && <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "3px" }}>{formatDateTime(ct.user_joined_at)}</div>}
-                            </TD>
-                            <TD>
-                              <span style={{ background: dJoined ? "#f0fdf4" : "#fef2f2", color: dJoined ? "#16a34a" : "#ef4444", border: `1px solid ${dJoined ? "#bbf7d0" : "#fecaca"}`, borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>
-                                {dJoined ? "Joined" : "Didn't join"}
-                              </span>
-                              {ct.dietitian_joined_at && <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "3px" }}>{formatDateTime(ct.dietitian_joined_at)}</div>}
-                            </TD>
-                            <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
-                              ₹{a.fee}<div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
-                            </TD>
-                            <TD>
-                              <div style={{ display: "flex", gap: "6px" }}>
-                                <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
-                                  <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
-                                </ActionBtn>
-                                <ActionBtn
-                                  onClick={() => {
-                                    setMarkNoShowAppt(a);
-                                    setMissedType(suggested);
-                                    setMissedReason("");
-                                    setShowMarkNoShowModal(true);
-                                  }}
-                                  title="Mark No-Show"
-                                  bg="#fef2f2">
-                                  <FaBan style={{ color: "#ef4444", fontSize: "13px" }} />
-                                </ActionBtn>
-                              </div>
-                            </TD>
-                          </TR>
-                        );
-                      })}
-                    </tbody>
-                  </Table>
-                </div>
-                <Pagination pagination={pagination} onPageChange={setNsqPage} count={appointments.length} />
-              </>
+            {/* ── Pending Payment table ── */}
+            {actionType === "pending_payment" && (
+              loading ? <LoadingState /> : appointments.length === 0 ? <EmptyState msg="No appointments pending payment approval." /> : (
+                <>
+                  <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                    <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "980px" }}>
+                      <thead>
+                        <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "Session", "No-Show", "Fee", "To Be Credited", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
+                      </thead>
+                      <tbody>
+                        {appointments.map((a, i) => {
+                          const { amountCredited } = calcBreakdown(a.fee, a.is_no_show, commissionPct);
+                          return (
+                            <TR key={a.id} index={i}>
+                              <TD style={{ fontWeight: 700, color: "#d97706", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
+                              <TD>
+                                <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
+                                <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
+                              </TD>
+                              <TD><DietitianCell d={a.dietitian} /></TD>
+                              <TD style={{ whiteSpace: "nowrap" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
+                                  <LuCalendarDays size={12} color="#d97706" /> {formatDate(a.appointment_date)}
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
+                                  <LuClock size={11} /> {a.slot} · {a.duration}min
+                                </div>
+                              </TD>
+                              <TD><SessionBadge type={a.session_type} /></TD>
+                              <TD><NoShowBadge isNoShow={a.is_no_show} /></TD>
+                              <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
+                                ₹{a.fee}<div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
+                              </TD>
+                              <TD>
+                                <span style={{ fontWeight: 800, fontSize: "15px", color: "#1E8E3E" }}>₹{amountCredited}</span>
+                                {a.is_no_show && <div style={{ fontSize: "10px", color: "#c2410c", fontWeight: 600 }}>50% (No-Show)</div>}
+                              </TD>
+                              <TD>
+                                <div style={{ display: "flex", gap: "6px" }}>
+                                  <ActionBtn onClick={() => openDetail(a.id)} title="View & Approve" bg="#fffbeb">
+                                    <MdPayment style={{ color: "#d97706", fontSize: "15px" }} />
+                                  </ActionBtn>
+                                  <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
+                                    <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
+                                  </ActionBtn>
+                                </div>
+                              </TD>
+                            </TR>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                  <Pagination pagination={pagination} onPageChange={setArPage} count={appointments.length} />
+                </>
+              )
+            )}
+
+            {/* ── No-Show Queue table ── */}
+            {actionType === "no_show_queue" && (
+              loading ? <LoadingState /> : appointments.length === 0 ? <EmptyState msg="No appointments in the no-show queue." /> : (
+                <>
+                  <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                    <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1050px" }}>
+                      <thead>
+                        <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "Session", "Patient Joined", "Dietitian Joined", "Fee", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
+                      </thead>
+                      <tbody>
+                        {appointments.map((a, i) => {
+                          const ct = a.call_tracking || {};
+                          const patJoined = !!ct.user_joined_at;
+                          const dJoined   = !!ct.dietitian_joined_at;
+                          const suggested =
+                            ct.patient_no_show && ct.dietitian_no_show ? "both_no_show"
+                            : ct.dietitian_no_show ? "dietitian_no_show"
+                            : "patient_no_show";
+                          return (
+                            <TR key={a.id} index={i}>
+                              <TD style={{ fontWeight: 700, color: "#c2410c", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
+                              <TD>
+                                <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
+                                <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
+                              </TD>
+                              <TD><DietitianCell d={a.dietitian} /></TD>
+                              <TD style={{ whiteSpace: "nowrap" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
+                                  <LuCalendarDays size={12} color="#c2410c" /> {formatDate(a.appointment_date)}
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
+                                  <LuClock size={11} /> {a.slot} · {a.duration}min
+                                </div>
+                              </TD>
+                              <TD><SessionBadge type={a.session_type} /></TD>
+                              <TD>
+                                <span style={{ background: patJoined ? "#f0fdf4" : "#fef2f2", color: patJoined ? "#16a34a" : "#ef4444", border: `1px solid ${patJoined ? "#bbf7d0" : "#fecaca"}`, borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>
+                                  {patJoined ? "Joined" : "Didn't join"}
+                                </span>
+                                {ct.user_joined_at && <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "3px" }}>{formatDateTime(ct.user_joined_at)}</div>}
+                              </TD>
+                              <TD>
+                                <span style={{ background: dJoined ? "#f0fdf4" : "#fef2f2", color: dJoined ? "#16a34a" : "#ef4444", border: `1px solid ${dJoined ? "#bbf7d0" : "#fecaca"}`, borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>
+                                  {dJoined ? "Joined" : "Didn't join"}
+                                </span>
+                                {ct.dietitian_joined_at && <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "3px" }}>{formatDateTime(ct.dietitian_joined_at)}</div>}
+                              </TD>
+                              <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
+                                ₹{a.fee}<div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
+                              </TD>
+                              <TD>
+                                <div style={{ display: "flex", gap: "6px" }}>
+                                  <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
+                                    <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
+                                  </ActionBtn>
+                                  <ActionBtn onClick={() => { setMarkNoShowAppt(a); setMissedType(suggested); setMissedReason(""); setShowMarkNoShowModal(true); }} title="Mark No-Show" bg="#fef2f2">
+                                    <FaBan style={{ color: "#ef4444", fontSize: "13px" }} />
+                                  </ActionBtn>
+                                </div>
+                              </TD>
+                            </TR>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                  <Pagination pagination={pagination} onPageChange={setArPage} count={appointments.length} />
+                </>
+              )
+            )}
+
+            {/* ── No-Show Approval table ── */}
+            {actionType === "no_show_approval" && (
+              loading ? <LoadingState /> : appointments.length === 0 ? <EmptyState msg="No appointments pending no-show approval." /> : (
+                <>
+                  <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                    <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1050px" }}>
+                      <thead>
+                        <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "No-Show Type", "Fee", "On Approval", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
+                      </thead>
+                      <tbody>
+                        {appointments.map((a, i) => {
+                          const commission     = Math.round((a.fee || 0) * commissionPct / 100);
+                          const afterCommission = (a.fee || 0) - commission;
+                          const credited       = Math.round(afterCommission * 0.5);
+                          const impactText =
+                            a.missed_type === "patient_no_show"   ? `Credit ₹${credited} to dietitian`
+                            : a.missed_type === "dietitian_no_show" ? `Refund ₹${a.fee} + ₹${penaltyAmount} penalty`
+                            : `₹${penaltyAmount} penalty, no refund`;
+                          const impactColor = a.missed_type === "patient_no_show" ? "#16a34a" : "#ef4444";
+                          return (
+                            <TR key={a.id} index={i}>
+                              <TD style={{ fontWeight: 700, color: "#7c3aed", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
+                              <TD>
+                                <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
+                                <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
+                              </TD>
+                              <TD><DietitianCell d={a.dietitian} /></TD>
+                              <TD style={{ whiteSpace: "nowrap" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
+                                  <LuCalendarDays size={12} color="#7c3aed" /> {formatDate(a.appointment_date)}
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
+                                  <LuClock size={11} /> {a.slot}
+                                </div>
+                              </TD>
+                              <TD><NoShowTypeBadge type={a.missed_type} /></TD>
+                              <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
+                                ₹{a.fee}<div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
+                              </TD>
+                              <TD><span style={{ fontSize: "12.5px", fontWeight: 700, color: impactColor }}>{impactText}</span></TD>
+                              <TD>
+                                <div style={{ display: "flex", gap: "6px" }}>
+                                  <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
+                                    <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
+                                  </ActionBtn>
+                                  <ActionBtn onClick={() => { setApproveNoShowAppt(a); setShowApproveNoShowModal(true); }} title="Approve No-Show" bg="#f5f3ff">
+                                    <FaCheck style={{ color: "#7c3aed", fontSize: "12px" }} />
+                                  </ActionBtn>
+                                </div>
+                              </TD>
+                            </TR>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                  <Pagination pagination={pagination} onPageChange={setArPage} count={appointments.length} />
+                </>
+              )
             )}
           </>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            VIEW 2 — PENDING NO-SHOW APPROVAL
-        ══════════════════════════════════════════════════════════════════ */}
-        {activeView === "pending_no_show_approval" && (
-          <>
-            <div style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: "10px", padding: "10px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#5b21b6" }}>
-              <MdPayment size={16} color="#7c3aed" />
-              <span>Missed appointments waiting for financial action approval. Confirming will trigger the payment, refund, or penalty based on who didn't show.</span>
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", marginBottom: "16px", alignItems: "center", flexWrap: "wrap" }}>
-              <SearchBar value={pnsaSearchInput} onChange={handlePnsaSearch} placeholder="Search patient name, email, phone..." />
-            </div>
-
-            {loading ? <LoadingState /> : appointments.length === 0 ? <EmptyState msg="No appointments pending no-show approval." /> : (
-              <>
-                <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                  <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1100px" }}>
-                    <thead>
-                      <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "No-Show Type", "Fee", "On Approval", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
-                    </thead>
-                    <tbody>
-                      {appointments.map((a, i) => {
-                        const commission = Math.round((a.fee || 0) * pnsaCommissionPct / 100);
-                        const afterCommission = (a.fee || 0) - commission;
-                        const credited = Math.round(afterCommission * 0.5);
-                        const impactText =
-                          a.missed_type === "patient_no_show"  ? `Credit ₹${credited} to dietitian`
-                          : a.missed_type === "dietitian_no_show" ? `Refund ₹${a.fee} to patient + ₹${pnsaPenaltyAmount} penalty`
-                          : `₹${pnsaPenaltyAmount} penalty, no refund`;
-                        const impactColor = a.missed_type === "patient_no_show" ? "#16a34a" : "#ef4444";
-                        return (
-                          <TR key={a.id} index={i}>
-                            <TD style={{ fontWeight: 700, color: "#7c3aed", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
-                            <TD>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
-                              <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
-                            </TD>
-                            <TD><DietitianCell d={a.dietitian} /></TD>
-                            <TD style={{ whiteSpace: "nowrap" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
-                                <LuCalendarDays size={12} color="#7c3aed" /> {formatDate(a.appointment_date)}
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
-                                <LuClock size={11} /> {a.slot}
-                              </div>
-                            </TD>
-                            <TD><NoShowTypeBadge type={a.missed_type} /></TD>
-                            <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
-                              ₹{a.fee}<div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
-                            </TD>
-                            <TD>
-                              <span style={{ fontSize: "12.5px", fontWeight: 700, color: impactColor }}>{impactText}</span>
-                            </TD>
-                            <TD>
-                              <div style={{ display: "flex", gap: "6px" }}>
-                                <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
-                                  <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
-                                </ActionBtn>
-                                <ActionBtn
-                                  onClick={() => { setApproveNoShowAppt(a); setShowApproveNoShowModal(true); }}
-                                  title="Approve No-Show"
-                                  bg="#f5f3ff">
-                                  <FaCheck style={{ color: "#7c3aed", fontSize: "12px" }} />
-                                </ActionBtn>
-                              </div>
-                            </TD>
-                          </TR>
-                        );
-                      })}
-                    </tbody>
-                  </Table>
-                </div>
-                <Pagination pagination={pagination} onPageChange={setPnsaPage} count={appointments.length} />
-              </>
-            )}
-          </>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            VIEW 3 — PENDING APPROVAL
-        ══════════════════════════════════════════════════════════════════ */}
-        {activeView === "pending_approval" && (
-          <>
-            <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px", padding: "10px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#92400e" }}>
-              <MdPayment size={16} color="#d97706" />
-              <span>Completed appointments with collected payment waiting for your approval to credit the dietitian.</span>
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", marginBottom: "16px", alignItems: "center", flexWrap: "wrap" }}>
-              <SearchBar value={paSearchInput} onChange={handlePaSearch} placeholder="Search patient name, email, phone..." />
-            </div>
-
-            {loading ? <LoadingState /> : appointments.length === 0 ? <EmptyState msg="No appointments pending payment approval." /> : (
-              <>
-                <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                  <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "980px" }}>
-                    <thead>
-                      <tr>
-                        {["S.No", "Patient", "Dietitian", "Date & Slot", "Session", "No-Show", "Fee", "To Be Credited", "Actions"].map((c) => <TH key={c}>{c}</TH>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {appointments.map((a, i) => {
-                        const { amountCredited } = calcBreakdown(a.fee, a.is_no_show, paCommissionPct);
-                        return (
-                          <TR key={a.id} index={i}>
-                            <TD style={{ fontWeight: 700, color: "#1E8E3E", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
-                            <TD>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
-                              <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
-                            </TD>
-                            <TD><DietitianCell d={a.dietitian} /></TD>
-                            <TD style={{ whiteSpace: "nowrap" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
-                                <LuCalendarDays size={12} color="#1E8E3E" /> {formatDate(a.appointment_date)}
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
-                                <LuClock size={11} /> {a.slot} · {a.duration}min
-                              </div>
-                            </TD>
-                            <TD><SessionBadge type={a.session_type} /></TD>
-                            <TD><NoShowBadge isNoShow={a.is_no_show} /></TD>
-                            <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
-                              ₹{a.fee}
-                              <div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
-                            </TD>
-                            <TD>
-                              <span style={{ fontWeight: 800, fontSize: "15px", color: "#1E8E3E" }}>₹{amountCredited}</span>
-                              {a.is_no_show && <div style={{ fontSize: "10px", color: "#c2410c", fontWeight: 600 }}>50% (No-Show)</div>}
-                            </TD>
-                            <TD>
-                              <div style={{ display: "flex", gap: "6px" }}>
-                                <ActionBtn onClick={() => openDetail(a.id)} title="View & Approve" bg="#fffbeb">
-                                  <MdPayment style={{ color: "#d97706", fontSize: "15px" }} />
-                                </ActionBtn>
-                                <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
-                                  <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
-                                </ActionBtn>
-                              </div>
-                            </TD>
-                          </TR>
-                        );
-                      })}
-                    </tbody>
-                  </Table>
-                </div>
-                <Pagination pagination={pagination} onPageChange={setPaPage} count={appointments.length} />
-              </>
-            )}
-          </>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            VIEW 4 — ALL APPOINTMENTS
+            TAB 2 — ALL APPOINTMENTS
         ══════════════════════════════════════════════════════════════════ */}
         {activeView === "all" && (
           <>
-            <div style={{ display: "flex", borderBottom: "2px solid #f0f0f0", marginBottom: "14px", gap: "2px", flexWrap: "wrap" }}>
-              {PAYMENT_TABS.map((tab) => {
-                const active = paymentFilter === tab.value;
-                const c = tab.color || "#1E8E3E";
-                return (
-                  <button key={tab.value} onClick={() => { setPaymentFilter(tab.value); setCurrentPage(1); }}
-                    style={{ padding: "8px 20px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13px", color: active ? c : "#6b7280", borderBottom: `2.5px solid ${active ? c : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
-              {STATUS_TABS.map((tab) => {
-                const active = statusFilter === tab.value;
-                const c = tab.color || "#1E8E3E";
-                return (
-                  <button key={tab.value} onClick={() => { setStatusFilter(tab.value); setCurrentPage(1); }}
-                    style={{ padding: "6px 16px", borderRadius: "20px", cursor: "pointer", fontWeight: 600, fontSize: "12.5px", border: `1.5px solid ${active ? c : "#e5e7eb"}`, background: active ? `${c}18` : "#fff", color: active ? c : "#6b7280", transition: "all 0.15s", display: "flex", alignItems: "center", gap: "6px" }}>
-                    {tab.value && <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: c, flexShrink: 0 }} />}
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
+            {/* Single filter bar */}
             <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
-              <SearchBar value={searchInput} onChange={handleAllSearch} placeholder="Search patient name, email, phone..." />
-              <FilterDropdown value={noShowFilter} onChange={(v) => { setNoShowFilter(v); setCurrentPage(1); }} options={NO_SHOW_OPTIONS} placeholder="No-show" accent="#ef4444" />
-              <DateRange from={dateFrom} to={dateTo} onFrom={(v) => { setDateFrom(v); setCurrentPage(1); }} onTo={(v) => { setDateTo(v); setCurrentPage(1); }} />
+              <SearchBar value={allSearchInput} onChange={handleAllSearch} placeholder="Search patient name, email, phone..." />
+              <FilterDropdown value={statusFilter}  onChange={(v) => { setStatusFilter(v);  setAllPage(1); }} options={STATUS_OPTIONS}  placeholder="Status" />
+              <FilterDropdown value={paymentFilter} onChange={(v) => { setPaymentFilter(v); setAllPage(1); }} options={PAYMENT_OPTIONS} placeholder="Payment" accent="#16a34a" />
+              <DateRange
+                from={dateFrom} to={dateTo}
+                onFrom={(v) => { setDateFrom(v); setAllPage(1); }}
+                onTo={(v)   => { setDateTo(v);   setAllPage(1); }}
+              />
               {hasAllFilters && (
                 <button onClick={clearAllFilters} style={{ height: "40px", border: "1px solid #fecaca", borderRadius: "10px", padding: "0 14px", background: "#fef2f2", cursor: "pointer", color: "#ef4444", fontWeight: 600, fontSize: "12.5px", display: "flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap" }}>
                   <LuX size={13} /> Clear
@@ -856,16 +759,17 @@ export default function AppointmentTable() {
               )}
             </div>
 
-            {loading ? <LoadingState /> : appointments.length === 0 ? <EmptyState msg={hasAllFilters ? "No appointments match the current filters." : "No appointments yet."} /> : (
+            {loading ? <LoadingState /> : appointments.length === 0 ? (
+              <EmptyState msg={hasAllFilters ? "No appointments match the current filters." : "No appointments yet."} />
+            ) : (
               <>
                 <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                  <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1000px" }}>
+                  <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1050px" }}>
                     <thead>
-                      <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "Status", "Payment", "Fee", "Created", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
+                      <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "Session", "Status", "Payment", "Fee", "Created", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
                     </thead>
                     <tbody>
                       {appointments.map((a, i) => {
-                        const noShowRow = a.session_type === "video_call" && a.call_tracking?.user_joined_at === null && a.call_tracking?.dietitian_joined_at !== null;
                         const needsApproval = a.status === "completed" && a.payment_status === "paid" && !a.payment_approved_at;
                         return (
                           <TR key={a.id} index={i}>
@@ -883,13 +787,17 @@ export default function AppointmentTable() {
                                 <LuClock size={11} /> {a.slot} · {a.duration}min
                               </div>
                             </TD>
-                            <TD>
-                              <StatusBadge status={a.status} />
-                              {noShowRow && <div style={{ marginTop: "4px" }}><span style={{ background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: "20px", padding: "2px 8px", fontSize: "10px", fontWeight: 700 }}>Patient No-Show</span></div>}
-                            </TD>
+                            <TD><SessionBadge type={a.session_type} /></TD>
+                            <TD><StatusBadge status={a.status} /></TD>
                             <TD>
                               <PaymentBadge status={a.payment_status} />
-                              {needsApproval && <div style={{ marginTop: "4px" }}><span style={{ background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a", borderRadius: "20px", padding: "2px 8px", fontSize: "10px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}><MdPayment size={9} />Needs Approval</span></div>}
+                              {needsApproval && (
+                                <div style={{ marginTop: "4px" }}>
+                                  <span style={{ background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a", borderRadius: "20px", padding: "2px 8px", fontSize: "10px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                                    <MdPayment size={9} /> Needs Approval
+                                  </span>
+                                </div>
+                              )}
                             </TD>
                             <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
                               ₹{a.fee}<div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
@@ -913,14 +821,14 @@ export default function AppointmentTable() {
                     </tbody>
                   </Table>
                 </div>
-                <Pagination pagination={pagination} onPageChange={setCurrentPage} count={appointments.length} />
+                <Pagination pagination={pagination} onPageChange={setAllPage} count={appointments.length} />
               </>
             )}
           </>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            VIEW 5 — PAYMENT HISTORY
+            TAB 3 — PAYMENT HISTORY
         ══════════════════════════════════════════════════════════════════ */}
         {activeView === "payment_history" && (
           <>
@@ -928,9 +836,11 @@ export default function AppointmentTable() {
               <SearchBar value={phSearchInput} onChange={handlePhSearch} placeholder="Search patient name, email, phone..." />
               <input placeholder="Dietitian ID" value={phDietitianId} onChange={(e) => { setPhDietitianId(e.target.value); setPhPage(1); }}
                 style={{ height: "40px", border: "1px solid #e5e5e5", borderRadius: "10px", padding: "0 12px", fontSize: "13px", outline: "none", width: "130px", color: "#374151" }} />
-              <DateRange from={phDateFrom} to={phDateTo}
+              <DateRange
+                from={phDateFrom} to={phDateTo}
                 onFrom={(v) => { setPhDateFrom(v); setPhPage(1); }}
-                onTo={(v) => { setPhDateTo(v); setPhPage(1); }} />
+                onTo={(v)   => { setPhDateTo(v);   setPhPage(1); }}
+              />
               {hasPhFilters && (
                 <button onClick={clearPhFilters} style={{ height: "40px", border: "1px solid #fecaca", borderRadius: "10px", padding: "0 14px", background: "#fef2f2", cursor: "pointer", color: "#ef4444", fontWeight: 600, fontSize: "12.5px", display: "flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap" }}>
                   <LuX size={13} /> Clear
@@ -950,7 +860,7 @@ export default function AppointmentTable() {
                         const pb = a.payment_breakdown || {};
                         return (
                           <TR key={a.id} index={i}>
-                            <TD style={{ fontWeight: 700, color: "#7c3aed", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
+                            <TD style={{ fontWeight: 700, color: "#6b7280", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
                             <TD>
                               <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
                               <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
@@ -958,7 +868,7 @@ export default function AppointmentTable() {
                             <TD><DietitianCell d={a.dietitian} /></TD>
                             <TD style={{ whiteSpace: "nowrap" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
-                                <LuCalendarDays size={12} color="#7c3aed" /> {formatDate(a.appointment_date)}
+                                <LuCalendarDays size={12} color="#6b7280" /> {formatDate(a.appointment_date)}
                               </div>
                               <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
                                 <LuClock size={11} /> {a.slot} · {a.duration}min
@@ -968,15 +878,9 @@ export default function AppointmentTable() {
                             <TD><SourceBadge source={pb.source} /></TD>
                             <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>₹{pb.gross_amount ?? a.fee}</TD>
                             <TD style={{ fontWeight: 600, fontSize: "13px", color: "#ef4444" }}>₹{pb.commission ?? "—"}</TD>
-                            <TD>
-                              <span style={{ fontWeight: 800, fontSize: "14px", color: "#16a34a" }}>₹{pb.amount_credited ?? "—"}</span>
-                            </TD>
-                            <TD style={{ fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
-                              {a.approved_by?.name || `#${a.approved_by?.id}` || "—"}
-                            </TD>
-                            <TD style={{ fontSize: "11.5px", color: "#6b7280", whiteSpace: "nowrap" }}>
-                              {formatDateTime(a.payment_approved_at)}
-                            </TD>
+                            <TD><span style={{ fontWeight: 800, fontSize: "14px", color: "#16a34a" }}>₹{pb.amount_credited ?? "—"}</span></TD>
+                            <TD style={{ fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>{a.approved_by?.name || (a.approved_by?.id ? `#${a.approved_by.id}` : "—")}</TD>
+                            <TD style={{ fontSize: "11.5px", color: "#6b7280", whiteSpace: "nowrap" }}>{formatDateTime(a.payment_approved_at)}</TD>
                             <TD>
                               <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#f5f3ff">
                                 <FaEye style={{ color: "#7c3aed", fontSize: "13px" }} />
@@ -1030,10 +934,10 @@ export default function AppointmentTable() {
                 <div style={{ marginLeft: "auto", fontSize: "12px", color: "#9ca3af" }}>Created: {formatDateTime(detail.created_at)}</div>
               </div>
 
-              {/* ── Payment Approval card ── */}
+              {/* Payment Approval card */}
               {detail.status === "completed" && detail.payment_status === "paid" && (() => {
                 const isNoShow = detail.missed_type === "patient_no_show";
-                const { commission, afterCommission, amountCredited } = calcBreakdown(detail.fee, isNoShow, paCommissionPct);
+                const { commission, afterCommission, amountCredited } = calcBreakdown(detail.fee, isNoShow, commissionPct);
                 const needsApproval = !detail.payment_approved_at;
                 return (
                   <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
@@ -1053,7 +957,7 @@ export default function AppointmentTable() {
                         <span style={{ fontSize: "13px", fontWeight: 700, color: "#111827" }}>₹{detail.fee}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", borderBottom: isNoShow ? "1px solid #e5e7eb" : "none" }}>
-                        <span style={{ fontSize: "13px", color: "#6b7280" }}>MeriDiet Commission ({paCommissionPct}%)</span>
+                        <span style={{ fontSize: "13px", color: "#6b7280" }}>MeriDiet Commission ({commissionPct}%)</span>
                         <span style={{ fontSize: "13px", fontWeight: 700, color: "#ef4444" }}>−₹{commission}</span>
                       </div>
                       {isNoShow && (
@@ -1084,8 +988,7 @@ export default function AppointmentTable() {
                         <div>
                           <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#16a34a" }}>Payment Approved</p>
                           <p style={{ margin: 0, fontSize: "11.5px", color: "#6b7280" }}>
-                            {formatDateTime(detail.payment_approved_at)}
-                            {detail.payment_approved_by ? ` · Admin #${detail.payment_approved_by}` : ""}
+                            {formatDateTime(detail.payment_approved_at)}{detail.payment_approved_by ? ` · Admin #${detail.payment_approved_by}` : ""}
                           </p>
                         </div>
                       </div>
@@ -1094,9 +997,8 @@ export default function AppointmentTable() {
                 );
               })()}
 
-              {/* 2-column grid */}
+              {/* 2-col grid */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                {/* Left */}
                 <div>
                   <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
                     <SectionHeader title="Appointment Info" icon="📋" />
@@ -1157,7 +1059,6 @@ export default function AppointmentTable() {
                   )}
                 </div>
 
-                {/* Right */}
                 <div>
                   <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
                     <SectionHeader title="Patient" icon="👤" />
@@ -1201,7 +1102,6 @@ export default function AppointmentTable() {
                 </div>
               </div>
 
-              {/* Follow-ups */}
               {detail.follow_ups?.length > 0 && (
                 <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginTop: "16px" }}>
                   <SectionHeader title="Follow-up Appointments" icon="🔁" />
@@ -1217,7 +1117,6 @@ export default function AppointmentTable() {
                 </div>
               )}
 
-              {/* Reschedule History */}
               {detail.reschedule_history?.length > 0 && (
                 <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginTop: "16px" }}>
                   <SectionHeader title="Reschedule History" icon="🔄" />
@@ -1263,7 +1162,7 @@ export default function AppointmentTable() {
         <Modal.Body style={{ padding: "20px" }}>
           {detail && (() => {
             const isNoShow = detail.missed_type === "patient_no_show";
-            const { commission, afterCommission, amountCredited } = calcBreakdown(detail.fee, isNoShow, paCommissionPct);
+            const { commission, afterCommission, amountCredited } = calcBreakdown(detail.fee, isNoShow, commissionPct);
             return (
               <>
                 <div style={{ background: "#f8f9fa", borderRadius: "10px", padding: "14px", marginBottom: "14px", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", alignItems: "baseline" }}>
@@ -1285,7 +1184,7 @@ export default function AppointmentTable() {
                     <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#111827" }}>₹{detail.fee}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #e5e7eb" }}>
-                    <span style={{ fontSize: "12.5px", color: "#6b7280" }}>Commission ({paCommissionPct}%)</span>
+                    <span style={{ fontSize: "12.5px", color: "#6b7280" }}>Commission ({commissionPct}%)</span>
                     <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#ef4444" }}>−₹{commission}</span>
                   </div>
                   {isNoShow && (
@@ -1340,7 +1239,6 @@ export default function AppointmentTable() {
                 <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase" }}>Date</span>
                 <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>{formatDate(markNoShowAppt.appointment_date)} · {markNoShowAppt.slot}</span>
               </div>
-
               <div style={{ marginBottom: "14px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "#374151", display: "block", marginBottom: "8px" }}>Who didn't show? *</label>
                 {[
@@ -1355,18 +1253,11 @@ export default function AppointmentTable() {
                   </label>
                 ))}
               </div>
-
               <div style={{ marginBottom: "14px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "#374151", display: "block", marginBottom: "6px" }}>Reason / Notes</label>
-                <textarea
-                  value={missedReason}
-                  onChange={(e) => setMissedReason(e.target.value)}
-                  placeholder="e.g. Patient called and said they forgot..."
-                  rows={3}
-                  style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", resize: "vertical", color: "#374151" }}
-                />
+                <textarea value={missedReason} onChange={(e) => setMissedReason(e.target.value)} placeholder="e.g. Patient called and said they forgot..." rows={3}
+                  style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", resize: "vertical", color: "#374151" }} />
               </div>
-
               <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", color: "#92400e" }}>
                 ℹ️ Recording the no-show does not move money yet. A second approval step will handle the payment action.
               </div>
@@ -1396,9 +1287,9 @@ export default function AppointmentTable() {
         <Modal.Body style={{ padding: "20px" }}>
           {approveNoShowAppt && (() => {
             const a = approveNoShowAppt;
-            const commission = Math.round((a.fee || 0) * pnsaCommissionPct / 100);
+            const commission     = Math.round((a.fee || 0) * commissionPct / 100);
             const afterCommission = (a.fee || 0) - commission;
-            const credited = Math.round(afterCommission * 0.5);
+            const credited       = Math.round(afterCommission * 0.5);
             return (
               <>
                 <div style={{ background: "#f8f9fa", borderRadius: "10px", padding: "14px", marginBottom: "14px", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", alignItems: "baseline" }}>
@@ -1409,37 +1300,29 @@ export default function AppointmentTable() {
                   <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase" }}>Date</span>
                   <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>{formatDate(a.appointment_date)} · {a.slot}</span>
                 </div>
-
                 <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>No-Show Type:</span>
                   <NoShowTypeBadge type={a.missed_type} />
                 </div>
-
                 {a.missed_type === "patient_no_show" && (
                   <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", overflow: "hidden", marginBottom: "14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: "12.5px", color: "#6b7280" }}>Consultation Fee</span>
-                      <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#111827" }}>₹{a.fee}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: "12.5px", color: "#6b7280" }}>Commission ({pnsaCommissionPct}%)</span>
-                      <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#ef4444" }}>−₹{commission}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: "12.5px", color: "#6b7280" }}>After Commission</span>
-                      <span style={{ fontSize: "12.5px", fontWeight: 600, color: "#374151" }}>₹{afterCommission}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: "12.5px", color: "#6b7280" }}>No-Show (50%)</span>
-                      <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#ef4444" }}>−₹{afterCommission - credited}</span>
-                    </div>
+                    {[
+                      { label: "Consultation Fee",    value: `₹${a.fee}`,         color: "#111827" },
+                      { label: `Commission (${commissionPct}%)`, value: `−₹${commission}`, color: "#ef4444" },
+                      { label: "After Commission",    value: `₹${afterCommission}`, color: "#374151" },
+                      { label: "No-Show (50%)",       value: `−₹${afterCommission - credited}`, color: "#ef4444" },
+                    ].map((r, i, arr) => (
+                      <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: i < arr.length - 1 ? "1px solid #e5e7eb" : "none" }}>
+                        <span style={{ fontSize: "12.5px", color: "#6b7280" }}>{r.label}</span>
+                        <span style={{ fontSize: "12.5px", fontWeight: 700, color: r.color }}>{r.value}</span>
+                      </div>
+                    ))}
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "#f0fdf4" }}>
                       <span style={{ fontSize: "13px", fontWeight: 700, color: "#374151" }}>Credited to Dietitian</span>
                       <span style={{ fontSize: "15px", fontWeight: 800, color: "#16a34a" }}>₹{credited}</span>
                     </div>
                   </div>
                 )}
-
                 {a.missed_type === "dietitian_no_show" && (
                   <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", overflow: "hidden", marginBottom: "14px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid #e5e7eb", background: "#fef2f2" }}>
@@ -1448,11 +1331,10 @@ export default function AppointmentTable() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "#fff7ed" }}>
                       <span style={{ fontSize: "12.5px", color: "#c2410c", fontWeight: 700 }}>Dietitian Penalty</span>
-                      <span style={{ fontSize: "13px", fontWeight: 800, color: "#c2410c" }}>₹{pnsaPenaltyAmount}</span>
+                      <span style={{ fontSize: "13px", fontWeight: 800, color: "#c2410c" }}>₹{penaltyAmount}</span>
                     </div>
                   </div>
                 )}
-
                 {a.missed_type === "both_no_show" && (
                   <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", overflow: "hidden", marginBottom: "14px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid #e5e7eb", background: "#f8f9fa" }}>
@@ -1461,11 +1343,10 @@ export default function AppointmentTable() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "#fff7ed" }}>
                       <span style={{ fontSize: "12.5px", color: "#c2410c", fontWeight: 700 }}>Dietitian Penalty</span>
-                      <span style={{ fontSize: "13px", fontWeight: 800, color: "#c2410c" }}>₹{pnsaPenaltyAmount}</span>
+                      <span style={{ fontSize: "13px", fontWeight: 800, color: "#c2410c" }}>₹{penaltyAmount}</span>
                     </div>
                   </div>
                 )}
-
                 <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", color: "#991b1b", fontWeight: 600 }}>
                   ⚠️ This action is irreversible. Money moves immediately upon confirmation.
                 </div>

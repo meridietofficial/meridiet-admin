@@ -3,7 +3,7 @@ import axiosInstance from "../helpers/api/instance";
 const BASE = "admin/appointments";
 
 const appointmentService = {
-  list:                  (params) => axiosInstance.get(`${BASE}?${params}`),
+  list:                  (params) => axiosInstance.get(`${BASE}/online?${params}`),
   get:                   (id)     => axiosInstance.get(`${BASE}/${id}`),
   pendingApproval:       (params) => axiosInstance.get(`${BASE}/pending-approval?${params}`),
   paymentHistory:        (params) => axiosInstance.get(`${BASE}/payment-history?${params}`),

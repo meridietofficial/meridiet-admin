@@ -38,6 +38,7 @@ const DateRangePicker = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(value.from);
   const [to, setTo] = useState(value.to);
+  const [selectedPreset, setSelectedPreset] = useState("Last 7 Days");
   const ref = useRef(null);
 
   useEffect(() => {
@@ -46,13 +47,13 @@ const DateRangePicker = ({ value, onChange }) => {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const applyPreset = (days) => {
+  const applyPreset = (days, label) => {
     const end = new Date(); let start = new Date();
     if (days === "month") { start = new Date(end.getFullYear(), end.getMonth(), 1); }
     else if (days === "lastMonth") { start = new Date(end.getFullYear(), end.getMonth() - 1, 1); end.setDate(0); }
     else { start.setDate(end.getDate() - days); }
     const f = toISO(start), t = toISO(end);
-    setFrom(f); setTo(t); onChange({ from: f, to: t }); setOpen(false);
+    setFrom(f); setTo(t); setSelectedPreset(label); onChange({ from: f, to: t }); setOpen(false);
   };
 
   const label = value.from && value.to
@@ -79,18 +80,21 @@ const DateRangePicker = ({ value, onChange }) => {
         }}>
           <div style={{ background: "#f8fbf9", borderRight: "1px solid #eee", padding: "14px 12px", minWidth: "150px" }}>
             <p style={{ margin: "0 0 10px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.6px" }}>Quick Select</p>
-            {PRESETS.map(p => (
-              <button key={p.label} onClick={() => applyPreset(p.days)} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", padding: "7px 10px", marginBottom: "2px", borderRadius: "8px",
-                border: "none", cursor: "pointer",
-                background: p.label === "Last 7 Days" ? "#e8f5ee" : "transparent",
-                color: p.label === "Last 7 Days" ? "#1E8E3E" : "#444",
-                fontSize: "12px", fontWeight: p.label === "Last 7 Days" ? 700 : 500, textAlign: "left",
-              }}>
-                {p.label}{p.label === "Last 7 Days" && <LuCheck size={12} />}
-              </button>
-            ))}
+            {PRESETS.map(p => {
+              const isSelected = selectedPreset === p.label;
+              return (
+                <button key={p.label} onClick={() => applyPreset(p.days, p.label)} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  width: "100%", padding: "7px 10px", marginBottom: "2px", borderRadius: "8px",
+                  border: "none", cursor: "pointer",
+                  background: isSelected ? "#e8f5ee" : "transparent",
+                  color: isSelected ? "#1E8E3E" : "#444",
+                  fontSize: "12px", fontWeight: isSelected ? 700 : 500, textAlign: "left",
+                }}>
+                  {p.label}{isSelected && <LuCheck size={12} />}
+                </button>
+              );
+            })}
           </div>
           <div style={{ padding: "16px 18px", flex: 1 }}>
             <p style={{ margin: "0 0 14px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.6px" }}>Custom Range</p>
@@ -104,7 +108,7 @@ const DateRangePicker = ({ value, onChange }) => {
                   }} />
                 </div>
               ))}
-              <button onClick={() => { onChange({ from, to }); setOpen(false); }} style={{
+              <button onClick={() => { setSelectedPreset(null); onChange({ from, to }); setOpen(false); }} style={{
                 padding: "9px", borderRadius: "9px", border: "none",
                 background: "#1E8E3E", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: "pointer",
               }}>Apply Range</button>

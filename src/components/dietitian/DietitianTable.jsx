@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Table, FormControl, Modal, Button } from "react-bootstrap";
-import { FaSort, FaChevronDown, FaEye, FaCheckCircle, FaExternalLinkAlt, FaFileExcel, FaCalendarAlt, FaFilter } from "react-icons/fa";
+import { FaSort, FaChevronDown, FaEye, FaEyeSlash, FaCheckCircle, FaExternalLinkAlt, FaFileExcel, FaCalendarAlt, FaFilter, FaPlus, FaTrash, FaUserPlus } from "react-icons/fa";
 import { MdBlock, MdCheckCircle, MdDelete, MdClose } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
 import API from "../../helpers/api";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import { IN_STATES } from "../../data/indiaCities";
+import { uploadDocuments } from "../../services/dietitianUploadService";
 
 const VERIFY_STATUS = { 0: "Pending", 1: "Verified", 2: "Rejected" };
 const VERIFY_COLORS = {
@@ -33,6 +35,250 @@ const SORT_OPTIONS = [
   { key: "z-a", label: "Name Z – A",  sortBy: "full_name",  sortOrder: "DESC" },
 ];
 const SORT_LABEL = { new: "Newest", old: "Oldest", "a-z": "A – Z", "z-a": "Z – A" };
+
+const DEGREE_GROUPS = [
+  {
+    group: "Undergraduate",
+    options: [
+      "B.Sc. Nutrition & Dietetics", "B.Sc. Food Science & Nutrition", "B.Sc. Clinical Nutrition",
+      "B.Sc. Dietetics", "B.Sc. Food & Nutrition", "B.Sc. Food Technology",
+      "B.Sc. Home Science (Nutrition)", "B.Sc. Home Science (Food & Nutrition)",
+      "B.Sc. Biochemistry", "B.Sc. Biotechnology", "B.Sc. Agriculture (Food Science)", "B.H.Sc. Home Science",
+    ],
+  },
+  {
+    group: "Postgraduate",
+    options: [
+      "M.Sc. Nutrition & Dietetics", "M.Sc. Food Science & Nutrition", "M.Sc. Clinical Nutrition",
+      "M.Sc. Dietetics", "M.Sc. Food & Nutrition", "M.Sc. Food Technology",
+      "M.Sc. Home Science (Nutrition)", "M.Sc. Biochemistry", "M.Sc. Biotechnology",
+      "M.Sc. Sports Nutrition", "M.Sc. Public Health Nutrition", "M.Sc. Community Nutrition",
+      "M.Sc. Human Nutrition", "M.Sc. Maternal & Child Nutrition", "M.Sc. Applied Nutrition",
+    ],
+  },
+  {
+    group: "PG Diploma / Diploma",
+    options: [
+      "PG Diploma in Dietetics", "PG Diploma in Clinical Nutrition", "PG Diploma in Sports Nutrition",
+      "PG Diploma in Food Science", "PG Diploma in Diabetes Education", "PG Diploma in Community Nutrition",
+      "PGDDN (IGNOU)", "DNHE", "Diploma in Dietetics & Nutrition",
+    ],
+  },
+  {
+    group: "Doctorate",
+    options: [
+      "Ph.D. Nutrition", "Ph.D. Food Science", "Ph.D. Clinical Nutrition",
+      "Ph.D. Nutritional Biochemistry", "Ph.D. Food & Nutrition", "Ph.D. Dietetics", "Ph.D. Home Science",
+    ],
+  },
+  {
+    group: "Medical",
+    options: ["MBBS", "MD Medicine", "MD Biochemistry", "DNB (General Medicine)"],
+  },
+  {
+    group: "Professional Certifications",
+    options: [
+      "CDE (Certified Diabetes Educator)", "Certified Sports Nutritionist",
+      "CNS (Certified Nutrition Specialist)", "Registered Dietitian (RD)", "Other",
+    ],
+  },
+];
+
+const EXPERIENCE_CHIPS = [
+  { label: "< 1 yr",   value: "<1 year"    },
+  { label: "1–3 yrs",  value: "1-3 years"  },
+  { label: "3–5 yrs",  value: "3-5 years"  },
+  { label: "5–10 yrs", value: "5-10 years" },
+  { label: "10+ yrs",  value: "10+ years"  },
+];
+
+const EMPTY_REGISTER = {
+  fullName: "", phone: "", email: "", state: "", city: "", password: "",
+  highestDegree: "", registrationNumber: "", experience: "", specialization: [],
+  profilePhoto: null, degreeCertificate: null, idProof: null,
+  registrationCertificate: null, agreeTerms: false,
+};
+
+function TagInput({ tags, onAdd, onRemove, inputVal, onInputChange, placeholder }) {
+  const handleKey = (e) => {
+    if ((e.key === "Enter" || e.key === ",") && inputVal.trim()) {
+      e.preventDefault();
+      onAdd(inputVal.trim().replace(/,+$/, ""));
+      onInputChange("");
+    }
+  };
+  const handleBlur = () => {
+    if (inputVal.trim()) { onAdd(inputVal.trim()); onInputChange(""); }
+  };
+  return (
+    <div style={{ border: "1px solid #e5e5e5", borderRadius: "8px", padding: "6px 10px", display: "flex", flexWrap: "wrap", gap: "6px", minHeight: "42px", background: "#fff", cursor: "text" }}>
+      {tags.map((tag, i) => (
+        <span key={i} style={{ background: "#f0f9f3", color: "#1E8E3E", border: "1px solid rgba(30,142,62,0.25)", borderRadius: "20px", padding: "2px 10px", fontSize: "12px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+          {tag}
+          <MdClose style={{ cursor: "pointer", fontSize: "13px" }} onClick={() => onRemove(i)} />
+        </span>
+      ))}
+      <input type="text" value={inputVal} onChange={(e) => onInputChange(e.target.value)} onKeyDown={handleKey} onBlur={handleBlur}
+        placeholder={tags.length ? "" : placeholder}
+        style={{ border: "none", outline: "none", fontSize: "13px", flex: 1, minWidth: "120px", background: "transparent", padding: "2px 4px" }}
+      />
+    </div>
+  );
+}
+
+function FileUpload({ label, accept, maxSizeMB, value, onChange, error }) {
+  const inputRef = useRef(null);
+  const handleChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      toast.error(`${label}: File must be under ${maxSizeMB}MB`);
+      e.target.value = "";
+      return;
+    }
+    onChange(file);
+  };
+  const remove = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onChange(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+  return (
+    <div>
+      <div
+        onClick={() => inputRef.current?.click()}
+        style={{ border: `2px dashed ${error ? "#ef4444" : value ? "#1E8E3E" : "#d1d5db"}`, borderRadius: "10px", padding: "16px 20px", cursor: "pointer", background: value ? "#f0f9f3" : "#fafafa", transition: "all 0.2s", textAlign: "center" }}
+      >
+        {value ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "24px" }}>📄</span>
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: "13px", color: "#111827", wordBreak: "break-all" }}>{value.name}</p>
+              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#888" }}>{(value.size / 1024).toFixed(0)} KB</p>
+            </div>
+            <button type="button" onClick={remove} style={{ border: "none", background: "#fef2f2", borderRadius: "6px", padding: "4px 10px", cursor: "pointer", color: "#ef4444", fontSize: "12px", fontWeight: 700, flexShrink: 0 }}>Remove</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: "28px", marginBottom: "6px" }}>📁</div>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: "13px", color: "#555" }}>Click to upload</p>
+            <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#9ca3af" }}>{accept.join(" / ")} • Max {maxSizeMB}MB</p>
+          </>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept={accept.join(",")} style={{ display: "none" }} onChange={handleChange} />
+      {error && <p style={{ fontSize: "11px", color: "#ef4444", marginTop: "4px", marginBottom: 0 }}>{error}</p>}
+    </div>
+  );
+}
+
+const SPECIALIZATIONS = [
+  "Weight Management", "Sports Nutrition", "Clinical Nutrition", "Pediatric Nutrition",
+  "PCOS / Hormonal Imbalance", "Diabetes Care", "Gut Health & IBS", "General Wellness",
+  "Thyroid Management", "Renal / Kidney Nutrition", "Cardiac Nutrition", "Oncology Nutrition",
+  "Pre & Postnatal Nutrition", "Geriatric Nutrition", "Eating Disorders",
+  "Food Allergy & Intolerance", "Vegan / Plant-Based Nutrition", "Bariatric Nutrition",
+  "Immune & Functional Nutrition", "Keto / Low-Carb Nutrition", "Fatty Liver & Liver Health",
+  "Cholesterol & Lipid Management", "Hypertension & Heart Health", "Anaemia & Iron Deficiency",
+  "Bone Health & Osteoporosis", "Skin & Hair Nutrition", "Mental Health & Nutrition",
+];
+
+function SpecializationInput({ selected, onChange }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen]   = useState(false);
+  const ref = useRef(null);
+
+  const atLimit    = selected.length >= 8;
+  const atSoftWarn = selected.length >= 5 && !atLimit;
+
+  const filtered = SPECIALIZATIONS.filter(
+    (s) => s.toLowerCase().includes(query.toLowerCase()) && !selected.includes(s)
+  );
+  const showCustomAdd =
+    query.trim() &&
+    !SPECIALIZATIONS.some((s) => s.toLowerCase() === query.trim().toLowerCase()) &&
+    !selected.includes(query.trim());
+
+  const add = (val) => {
+    if (atLimit) return;
+    onChange([...selected, val]);
+    setQuery("");
+    setOpen(false);
+  };
+  const remove = (val) => onChange(selected.filter((s) => s !== val));
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref}>
+      {/* Selected chips */}
+      {selected.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+          {selected.map((s) => (
+            <span key={s} style={{ background: "#f0f9f3", color: "#1E8E3E", border: "1px solid rgba(30,142,62,0.25)", borderRadius: "20px", padding: "4px 10px", fontSize: "12px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              {s}
+              <MdClose style={{ cursor: "pointer", fontSize: "13px" }} onClick={() => remove(s)} />
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Soft warn */}
+      {atSoftWarn && (
+        <p style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: "4px" }}>
+          <span>⚠</span> Profiles with focused specializations tend to get more client trust.
+        </p>
+      )}
+
+      {/* Hard limit */}
+      {atLimit ? (
+        <p style={{ fontSize: "12px", color: "#ef4444", fontWeight: 600, margin: 0, padding: "9px 12px", border: "1px solid #fecaca", borderRadius: "8px", background: "#fef2f2" }}>
+          Maximum 8 specializations reached.
+        </p>
+      ) : (
+        <>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            placeholder="Search or type to add a custom specialization…"
+            style={{ width: "100%", padding: "9px 12px", fontSize: "13px", outline: "none", background: "#fff", color: "#111827",
+              border: "1px solid #e5e5e5",
+              borderRadius: open && (filtered.length > 0 || showCustomAdd) ? "8px 8px 0 0" : "8px",
+              borderBottom: open && (filtered.length > 0 || showCustomAdd) ? "1px solid #e5e5e5" : undefined,
+            }}
+          />
+          {open && (filtered.length > 0 || showCustomAdd) && (
+            <div style={{ border: "1px solid #e5e5e5", borderTop: "none", borderRadius: "0 0 8px 8px", background: "#fff", maxHeight: "180px", overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
+              {filtered.map((s) => (
+                <div key={s} onClick={() => add(s)}
+                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: "13px", color: "#374151", transition: "background 0.15s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9f3")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+                  {s}
+                </div>
+              ))}
+              {showCustomAdd && (
+                <div onClick={() => add(query.trim())}
+                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: "13px", color: "#1E8E3E", fontWeight: 700, borderTop: filtered.length ? "1px solid #edf1ee" : "none", transition: "background 0.15s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9f3")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+                  + Add &ldquo;{query.trim()}&rdquo;
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 // apiKey: "dietitianList" | "dietitianRequests"
 // showVerify: true = show Verify button in detail modal
@@ -73,6 +319,17 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Register dietitian modal
+  const [showRegister, setShowRegister] = useState(false);
+  const [registerForm, setRegisterForm] = useState(EMPTY_REGISTER);
+  const [registerErrors, setRegisterErrors] = useState({});
+  const [registering, setRegistering] = useState(false);
+  const [registerStep, setRegisterStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [registeringMsg, setRegisteringMsg] = useState("");
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -268,6 +525,132 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   const clearDateRange = () => { setStartDate(""); setEndDate(""); setCurrentPage(1); };
   const hasDateFilter = startDate || endDate;
 
+  // ── Register Dietitian handlers ──────────────────────────────────────────
+  const setRF = (field, value) => {
+    setRegisterForm((prev) => ({ ...prev, [field]: value }));
+    if (registerErrors[field]) setRegisterErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+
+  const setRFFile = (field, file) => {
+    setRegisterForm((prev) => ({ ...prev, [field]: file }));
+    if (registerErrors[field]) setRegisterErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+
+  const addTag = (field, val) => {
+    if (!val) return;
+    setRegisterForm((prev) => ({ ...prev, [field]: [...prev[field], val] }));
+  };
+  const removeTag = (field, idx) => {
+    setRegisterForm((prev) => ({ ...prev, [field]: prev[field].filter((_, i) => i !== idx) }));
+  };
+
+  const handleStateChange = (stateName) => {
+    setRF("state", stateName);
+    setRF("city", "");
+    setCities([]);
+    if (!stateName) return;
+    setCitiesLoading(true);
+    fetch("https://countriesnow.space/api/v0.1/countries/state/cities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country: "India", state: stateName }),
+    })
+      .then((r) => r.json())
+      .then((res) => { if (!res.error) setCities(res.data ?? []); })
+      .catch(() => toast.error("Could not load cities. Please try again."))
+      .finally(() => setCitiesLoading(false));
+  };
+
+  const validateStep = (step) => {
+    const errs = {};
+    if (step === 1) {
+      if (!registerForm.fullName.trim()) errs.fullName = "Required";
+      if (!registerForm.phone.trim()) errs.phone = "Required";
+      else if (!/^\d{10}$/.test(registerForm.phone.trim())) errs.phone = "Enter a valid 10-digit number";
+      if (!registerForm.email.trim()) errs.email = "Required";
+      else if (!/\S+@\S+\.\S+/.test(registerForm.email)) errs.email = "Invalid email";
+      if (!registerForm.state.trim()) errs.state = "Required";
+      if (!registerForm.city.trim()) errs.city = "Required";
+      if (!registerForm.password) errs.password = "Required";
+      else if (registerForm.password.length < 8) errs.password = "Minimum 8 characters";
+    }
+    if (step === 2) {
+      if (!registerForm.highestDegree) errs.highestDegree = "Required";
+      if (!registerForm.registrationNumber.trim()) errs.registrationNumber = "Required";
+      if (!registerForm.experience) errs.experience = "Select an experience level";
+    }
+    if (step === 3) {
+      if (!registerForm.profilePhoto) errs.profilePhoto = "Profile photo is required";
+      if (!registerForm.degreeCertificate) errs.degreeCertificate = "Degree certificate is required";
+      if (!registerForm.idProof) errs.idProof = "ID proof is required";
+      if (!registerForm.agreeTerms) errs.agreeTerms = "You must agree to the Terms & Conditions";
+    }
+    return errs;
+  };
+
+  const handleRegisterNext = () => {
+    const errs = validateStep(registerStep);
+    if (Object.keys(errs).length) { setRegisterErrors(errs); return; }
+    setRegisterErrors({});
+    setRegisterStep((s) => s + 1);
+  };
+
+  const handleRegisterBack = () => {
+    setRegisterErrors({});
+    setShowPassword(false);
+    setRegisterStep((s) => s - 1);
+  };
+
+  const handleRegisterSubmit = async () => {
+    const errs = validateStep(3);
+    if (Object.keys(errs).length) { setRegisterErrors(errs); return; }
+
+    setRegistering(true);
+    try {
+      setRegisteringMsg("Uploading documents…");
+      const urls = await uploadDocuments({
+        profilePhoto: registerForm.profilePhoto,
+        degreeCert:   registerForm.degreeCertificate,
+        regCert:      registerForm.registrationCertificate || null,
+        idProof:      registerForm.idProof,
+      });
+
+      setRegisteringMsg("Registering dietitian…");
+      const payload = {
+        fullName:           registerForm.fullName.trim(),
+        phone:              registerForm.phone.trim(),
+        email:              registerForm.email.trim(),
+        password:           registerForm.password,
+        state:              registerForm.state,
+        city:               registerForm.city,
+        experience:         registerForm.experience,
+        registrationNumber: registerForm.registrationNumber.trim(),
+        degrees:            [{ degree: registerForm.highestDegree }],
+        specialization:     registerForm.specialization,
+        documents: {
+          profilePhoto:             urls.profilePhoto,
+          degreeCertificate:        urls.degreeCert,
+          registrationCertificate:  urls.regCert,
+          idProof:                  urls.idProof,
+        },
+      };
+
+      const res = await API.apiPost("registerDietitian", payload);
+      toast.success(res?.data?.message || "Dietitian registered successfully.");
+      setShowRegister(false);
+      setRegisterForm(EMPTY_REGISTER);
+      setRegisterErrors({});
+      setRegisterStep(1);
+      setShowPassword(false);
+      setCities([]);
+      fetchDietitians();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Registration failed.");
+    } finally {
+      setRegistering(false);
+      setRegisteringMsg("");
+    }
+  };
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
@@ -422,6 +805,19 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
           <FaFileExcel style={{ fontSize: "15px" }} />
           {isExporting ? "Exporting..." : "Export Excel"}
         </button>
+
+        {/* Register Dietitian — only on management view */}
+        {!showVerify && (
+          <button
+            onClick={() => { setShowRegister(true); setRegisterForm(EMPTY_REGISTER); setRegisterErrors({}); setRegisterStep(1); setShowPassword(false); setCities([]); setCitiesLoading(false); }}
+            style={{ height: "42px", border: "none", borderRadius: "10px", padding: "0 18px", background: "linear-gradient(135deg, #1E8E3E, #16a34a)", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, fontSize: "13px", color: "#fff", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(30,142,62,0.3)", transition: "all 0.2s" }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            <FaUserPlus style={{ fontSize: "15px" }} />
+            Register Dietitian
+          </button>
+        )}
       </div>
 
       {/* Active filters strip */}
@@ -621,6 +1017,251 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
         </div>
       )}
 
+      {/* ── Register Dietitian Modal ── */}
+      <Modal show={showRegister} onHide={() => { if (!registering) { setShowRegister(false); setRegisterStep(1); setRegisterErrors({}); } }} size="lg" centered scrollable>
+        <Modal.Header closeButton style={{ background: "linear-gradient(135deg, #1E8E3E, #16a34a)", color: "#fff", borderBottom: "none", padding: "1.25rem 1.75rem" }}>
+          <Modal.Title style={{ fontWeight: 700, fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "10px" }}>
+            <FaUserPlus /> Register New Dietitian
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: "#f8f9fa", padding: "1.5rem 1.75rem", maxHeight: "72vh", overflowY: "auto" }}>
+
+          {/* Step indicator */}
+          <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "28px" }}>
+            {["Basic Info", "Professional", "Documents"].map((label, i) => {
+              const n = i + 1;
+              const done = n < registerStep;
+              const active = n === registerStep;
+              return (
+                <div key={n} style={{ display: "flex", alignItems: "center", flex: i < 2 ? 1 : undefined }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "13px", background: done || active ? "#1E8E3E" : "#e5e5e5", color: done || active ? "#fff" : "#9ca3af", boxShadow: active ? "0 0 0 4px rgba(30,142,62,0.15)" : "none", transition: "all 0.2s" }}>
+                      {done ? "\u2713" : n}
+                    </div>
+                    <span style={{ fontSize: "11px", fontWeight: active ? 700 : 500, color: active ? "#1E8E3E" : done ? "#374151" : "#9ca3af", marginTop: "5px", whiteSpace: "nowrap" }}>{label}</span>
+                  </div>
+                  {i < 2 && <div style={{ flex: 1, height: "2px", background: done ? "#1E8E3E" : "#e5e5e5", margin: "0 8px", marginBottom: "16px", transition: "background 0.3s" }} />}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Shared field styles */}
+          {(() => {
+            const IS = (err) => ({ width: "100%", padding: "9px 12px", border: `1px solid ${err ? "#ef4444" : "#e5e5e5"}`, borderRadius: "8px", fontSize: "13px", outline: "none", background: "#fff", color: "#111827" });
+            const LS = { fontSize: "11px", color: "#6b7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "4px" };
+            const ES = { fontSize: "11px", color: "#ef4444", marginTop: "3px", marginBottom: 0 };
+            const SC = { background: "#fff", borderRadius: "14px", padding: "22px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" };
+            const SH = (t) => <h6 style={{ fontWeight: 700, color: "#1E8E3E", marginBottom: "16px", paddingBottom: "8px", borderBottom: "1px solid #edf1ee" }}>{t}</h6>;
+
+            return (
+              <>
+                {/* ── STEP 1: Basic Information ── */}
+                {registerStep === 1 && (
+                  <div style={SC}>
+                    {SH("Step 1 — Basic Information")}
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label style={LS}>Full Name *</label>
+                        <input style={IS(registerErrors.fullName)} value={registerForm.fullName} onChange={(e) => setRF("fullName", e.target.value)} placeholder="Dr. Priya Sharma" />
+                        {registerErrors.fullName && <p style={ES}>{registerErrors.fullName}</p>}
+                      </div>
+                      <div className="col-md-6">
+                        <label style={LS}>Mobile Number *</label>
+                        <input type="tel" style={IS(registerErrors.phone)} value={registerForm.phone} onChange={(e) => setRF("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" maxLength={10} />
+                        {registerErrors.phone && <p style={ES}>{registerErrors.phone}</p>}
+                      </div>
+                      <div className="col-md-6">
+                        <label style={LS}>Email Address *</label>
+                        <input type="email" style={IS(registerErrors.email)} value={registerForm.email} onChange={(e) => setRF("email", e.target.value)} placeholder="priya@example.com" />
+                        {registerErrors.email && <p style={ES}>{registerErrors.email}</p>}
+                      </div>
+                      <div className="col-md-6">
+                        <label style={LS}>Password * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>(min 8 characters)</span></label>
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            style={{ ...IS(registerErrors.password), paddingRight: "40px" }}
+                            value={registerForm.password}
+                            onChange={(e) => setRF("password", e.target.value)}
+                            placeholder="Min. 8 characters"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: "4px", color: "#9ca3af", display: "flex", alignItems: "center" }}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                          </button>
+                        </div>
+                        {registerErrors.password && <p style={ES}>{registerErrors.password}</p>}
+                      </div>
+                      <div className="col-md-6">
+                        <label style={LS}>State *</label>
+                        <div style={{ position: "relative" }}>
+                          <select
+                            style={{ ...IS(registerErrors.state), appearance: "none", paddingRight: "32px" }}
+                            value={registerForm.state}
+                            onChange={(e) => handleStateChange(e.target.value)}
+                          >
+                            <option value="">Select a state</option>
+                            {IN_STATES.map((s) => (
+                              <option key={s.isoCode} value={s.name}>{s.name}</option>
+                            ))}
+                          </select>
+                          <FaChevronDown style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: "12px", pointerEvents: "none" }} />
+                        </div>
+                        {registerErrors.state && <p style={ES}>{registerErrors.state}</p>}
+                      </div>
+                      <div className="col-md-6">
+                        <label style={LS}>City *</label>
+                        <div style={{ position: "relative" }}>
+                          <select
+                            style={{ ...IS(registerErrors.city), appearance: "none", paddingRight: "32px", opacity: (!registerForm.state || citiesLoading) ? 0.6 : 1 }}
+                            value={registerForm.city}
+                            onChange={(e) => setRF("city", e.target.value)}
+                            disabled={!registerForm.state || citiesLoading}
+                          >
+                            <option value="">
+                              {citiesLoading ? "Loading cities…" : registerForm.state ? "Select a city" : "Select a state first"}
+                            </option>
+                            {cities.map((city) => (
+                              <option key={city} value={city}>{city}</option>
+                            ))}
+                          </select>
+                          {citiesLoading
+                            ? <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", width: "14px", height: "14px", border: "2px solid #e5e5e5", borderTopColor: "#1E8E3E", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                            : <FaChevronDown style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: "12px", pointerEvents: "none" }} />
+                          }
+                        </div>
+                        {registerErrors.city && <p style={ES}>{registerErrors.city}</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 2: Professional Details ── */}
+                {registerStep === 2 && (
+                  <div style={SC}>
+                    {SH("Step 2 — Professional Details")}
+                    <div className="row g-3">
+                      <div className="col-md-12">
+                        <label style={LS}>Highest Degree *</label>
+                        <select style={{ ...IS(registerErrors.highestDegree), appearance: "none" }} value={registerForm.highestDegree} onChange={(e) => setRF("highestDegree", e.target.value)}>
+                          <option value="">Select a degree</option>
+                          {DEGREE_GROUPS.map(({ group, options }) => (
+                            <optgroup key={group} label={group}>
+                              {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                            </optgroup>
+                          ))}
+                        </select>
+                        {registerErrors.highestDegree && <p style={ES}>{registerErrors.highestDegree}</p>}
+                      </div>
+                      <div className="col-md-12">
+                        <label style={LS}>Registration Number * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>(enter "N/A" if not applicable)</span></label>
+                        <input style={IS(registerErrors.registrationNumber)} value={registerForm.registrationNumber} onChange={(e) => setRF("registrationNumber", e.target.value)} placeholder="MH-DT-12345  or  N/A" />
+                        {registerErrors.registrationNumber && <p style={ES}>{registerErrors.registrationNumber}</p>}
+                      </div>
+                      <div className="col-md-12">
+                        <label style={LS}>Experience *</label>
+                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "2px" }}>
+                          {EXPERIENCE_CHIPS.map(({ label, value }) => {
+                            const active = registerForm.experience === value;
+                            return (
+                              <button key={value} type="button" onClick={() => setRF("experience", value)}
+                                style={{ padding: "8px 20px", borderRadius: "24px", border: `1.5px solid ${active ? "#1E8E3E" : registerErrors.experience ? "#ef4444" : "#e5e5e5"}`, background: active ? "#1E8E3E" : "#fff", color: active ? "#fff" : "#555", fontWeight: active ? 700 : 500, fontSize: "13px", cursor: "pointer", transition: "all 0.2s" }}>
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {registerErrors.experience && <p style={ES}>{registerErrors.experience}</p>}
+                      </div>
+                      <div className="col-md-12">
+                        <label style={LS}>
+                          Specializations{" "}
+                          <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>
+                            (optional · up to 8)
+                          </span>
+                        </label>
+                        <SpecializationInput
+                          selected={registerForm.specialization}
+                          onChange={(v) => setRF("specialization", v)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 3: Document Upload ── */}
+                {registerStep === 3 && (
+                  <div style={SC}>
+                    {SH("Step 3 — Document Upload")}
+                    <div className="row g-3">
+                      <div className="col-md-12">
+                        <label style={LS}>Profile Photo * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>JPG / PNG • Max 2MB</span></label>
+                        <FileUpload label="Profile Photo" accept={["image/jpeg", "image/png"]} maxSizeMB={2} value={registerForm.profilePhoto} onChange={(f) => setRFFile("profilePhoto", f)} error={registerErrors.profilePhoto} />
+                      </div>
+                      <div className="col-md-12">
+                        <label style={LS}>Degree Certificate * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>JPG / PNG / PDF • Max 5MB</span></label>
+                        <FileUpload label="Degree Certificate" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.degreeCertificate} onChange={(f) => setRFFile("degreeCertificate", f)} error={registerErrors.degreeCertificate} />
+                      </div>
+                      <div className="col-md-12">
+                        <label style={LS}>ID Proof * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>JPG / PNG / PDF • Max 5MB</span></label>
+                        <FileUpload label="ID Proof" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.idProof} onChange={(f) => setRFFile("idProof", f)} error={registerErrors.idProof} />
+                      </div>
+                      <div className="col-md-12">
+                        <label style={LS}>Registration Certificate <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>optional • JPG / PNG / PDF • Max 5MB</span></label>
+                        <FileUpload label="Registration Certificate" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.registrationCertificate} onChange={(f) => setRFFile("registrationCertificate", f)} error={null} />
+                      </div>
+                      <div className="col-md-12" style={{ marginTop: "4px" }}>
+                        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={registerForm.agreeTerms}
+                            onChange={(e) => { setRF("agreeTerms", e.target.checked); }}
+                            style={{ marginTop: "3px", accentColor: "#1E8E3E", width: "16px", height: "16px", flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: "13px", color: registerErrors.agreeTerms ? "#ef4444" : "#374151", lineHeight: "1.5" }}>
+                            I agree to the <strong>Terms &amp; Conditions</strong> and <strong>Privacy Policy</strong>
+                          </span>
+                        </label>
+                        {registerErrors.agreeTerms && <p style={{ ...ES, marginTop: "6px" }}>{registerErrors.agreeTerms}</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </Modal.Body>
+        <Modal.Footer style={{ background: "#f8f9fa", borderTop: "1px solid #edf1ee", padding: "1rem 1.75rem", gap: "10px", justifyContent: "space-between" }}>
+          <div>
+            {registerStep > 1 && (
+              <Button variant="outline-secondary" onClick={handleRegisterBack} disabled={registering} style={{ borderRadius: "8px", padding: "8px 20px", fontWeight: 600 }}>
+                ← Back
+              </Button>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <Button variant="outline-secondary" onClick={() => { setShowRegister(false); setRegisterStep(1); setRegisterErrors({}); }} disabled={registering} style={{ borderRadius: "8px", padding: "8px 20px", fontWeight: 600 }}>Cancel</Button>
+            {registerStep < 3 ? (
+              <Button onClick={handleRegisterNext} style={{ background: "linear-gradient(135deg, #1E8E3E, #16a34a)", border: "none", borderRadius: "8px", padding: "8px 24px", fontWeight: 700 }}>
+                Next →
+              </Button>
+            ) : (
+              <Button onClick={handleRegisterSubmit} disabled={registering} style={{ background: "linear-gradient(135deg, #1E8E3E, #16a34a)", border: "none", borderRadius: "8px", padding: "8px 24px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px", minWidth: "200px", justifyContent: "center" }}>
+                {registering ? (
+                  <>{registeringMsg || "Processing…"}</>
+                ) : (
+                  <><FaUserPlus /> Register Dietitian</>
+                )}
+              </Button>
+            )}
+          </div>
+        </Modal.Footer>
+      </Modal>
       {/* ── Delete Confirmation Modal ── */}
       <Modal show={showDeleteModal} onHide={() => { setShowDeleteModal(false); setDeleteTarget(null); }} size="sm" centered>
         <Modal.Body style={{ padding: "32px 24px", textAlign: "center" }}>
