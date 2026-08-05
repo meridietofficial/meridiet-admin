@@ -12,10 +12,14 @@ import {
 } from "react-icons/lu";
 import API from "../../helpers/api";
 
-// ── Period → API param maps ───────────────────────────────────────────────────
-const REV_PERIOD_MAP    = { "This Week": "daily", "This Month": "weekly", "This Year": "monthly" };
-const USER_PERIOD_MAP   = { "This Month": "weekly", "This Quarter": "monthly", "This Year": "quarterly" };
-const CONSULT_PERIOD_MAP = { "This Week": "daily", "This Month": "weekly" };
+// ── Auto-derive grouping period from date range ───────────────────────────────
+const getPeriod = (range) => {
+  if (!range?.from || !range?.to) return "daily";
+  const days = (new Date(range.to) - new Date(range.from)) / 86400000;
+  if (days <= 14) return "daily";
+  if (days <= 90) return "weekly";
+  return "monthly";
+};
 
 const PLAN_META = [
   { type: 1, label: "Basic Plan", sub: "1 Week · 7 Days", icon: LuClock, color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe", price: 199 },
@@ -135,14 +139,6 @@ const SectionHeader = ({ title, action, actionLabel = "View All" }) => (
   </div>
 );
 
-const PeriodBadge = ({ value, onChange, options }) => (
-  <select value={value} onChange={e => onChange(e.target.value)} style={{
-    border: "1px solid #e0e7e1", borderRadius: "8px", padding: "4px 10px",
-    fontSize: "13px", color: "#444", background: "#fff", cursor: "pointer", outline: "none",
-  }}>
-    {options.map(o => <option key={o}>{o}</option>)}
-  </select>
-);
 
 const StatBadge = ({ value, positive = true }) => (
   <span style={{ color: positive ? "#16a34a" : "#ef4444", fontSize: "12px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "2px" }}>
@@ -166,10 +162,6 @@ const Skeleton = ({ w = "100%", h = "18px", radius = "6px" }) => (
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 const Dashboard = () => {
-  const [revPeriod, setRevPeriod] = useState("This Week");
-  const [userPeriod, setUserPeriod] = useState("This Month");
-  const [consultPeriod, setConsultPeriod] = useState("This Week");
-
   const today = new Date();
   const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 7);
   const [dateRange, setDateRange] = useState({ from: toISO(weekAgo), to: toISO(today) });
@@ -207,10 +199,12 @@ const Dashboard = () => {
 
   // ── Fetch: Summary stats (re-runs when date range changes) ───────
   useEffect(() => {
+    let cancelled = false;
     setStatsLoading(true);
     const dp = buildDateParams(dateRange);
     API.apiGet("dashboardStats", dp ? `?${dp.slice(1)}` : "")
       .then(res => {
+        if (cancelled) return;
         const d = res?.data?.data;
         if (!d) return;
         setTotalUsers(d.totalUsers ?? null);
@@ -223,16 +217,19 @@ const Dashboard = () => {
         setStatChanges(d.changes ?? null);
       })
       .catch(() => {})
-      .finally(() => setStatsLoading(false));
+      .finally(() => { if (!cancelled) setStatsLoading(false); });
+    return () => { cancelled = true; };
   }, [dateRange]);
 
-  // ── Fetch: Revenue chart (re-runs when date range or period dropdown changes) ─
+  // ── Fetch: Revenue chart ─────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
     setRevenueLoading(true);
-    const period = REV_PERIOD_MAP[revPeriod] || "daily";
+    setRevenueData([]);
     const dp = buildDateParams(dateRange);
-    API.apiGet("dashboardRevenue", `?period=${period}${dp}`)
+    API.apiGet("dashboardRevenue", `?period=${getPeriod(dateRange)}${dp}`)
       .then(res => {
+        if (cancelled) return;
         const d = res?.data?.data;
         if (!d) return;
         setRevTotal(d.total ?? null);
@@ -240,31 +237,37 @@ const Dashboard = () => {
         setRevenueData((d.data || []).map(p => ({ label: p.label, value: p.revenue })));
       })
       .catch(() => {})
-      .finally(() => setRevenueLoading(false));
-  }, [dateRange, revPeriod]);
+      .finally(() => { if (!cancelled) setRevenueLoading(false); });
+    return () => { cancelled = true; };
+  }, [dateRange]);
 
   // ── Fetch: User growth chart ─────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
     setUserGrowthLoading(true);
-    const period = USER_PERIOD_MAP[userPeriod] || "monthly";
+    setUserGrowthData([]);
     const dp = buildDateParams(dateRange);
-    API.apiGet("dashboardUserGrowth", `?period=${period}${dp}`)
+    API.apiGet("dashboardUserGrowth", `?period=${getPeriod(dateRange)}${dp}`)
       .then(res => {
+        if (cancelled) return;
         const d = res?.data?.data;
         if (!d) return;
         setUserGrowthData((d.data || []).map(p => ({ week: p.label, users: p.newUsers })));
       })
       .catch(() => {})
-      .finally(() => setUserGrowthLoading(false));
-  }, [dateRange, userPeriod]);
+      .finally(() => { if (!cancelled) setUserGrowthLoading(false); });
+    return () => { cancelled = true; };
+  }, [dateRange]);
 
   // ── Fetch: Consultations chart ───────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
     setConsultLoading(true);
-    const period = CONSULT_PERIOD_MAP[consultPeriod] || "daily";
+    setConsultData([]);
     const dp = buildDateParams(dateRange);
-    API.apiGet("dashboardConsultations", `?period=${period}${dp}`)
+    API.apiGet("dashboardConsultations", `?period=${getPeriod(dateRange)}${dp}`)
       .then(res => {
+        if (cancelled) return;
         const d = res?.data?.data;
         if (!d) return;
         setConsultTotal(d.total ?? null);
@@ -273,8 +276,9 @@ const Dashboard = () => {
         setConsultData((d.data || []).map(p => ({ day: p.label, value: p.count })));
       })
       .catch(() => {})
-      .finally(() => setConsultLoading(false));
-  }, [dateRange, consultPeriod]);
+      .finally(() => { if (!cancelled) setConsultLoading(false); });
+    return () => { cancelled = true; };
+  }, [dateRange]);
 
   // ── Fetch: System overview (once only) ───────────────────────────
   useEffect(() => {
@@ -348,9 +352,8 @@ const Dashboard = () => {
 
         {/* Revenue Overview */}
         <Card style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+          <div style={{ marginBottom: "4px" }}>
             <span style={{ fontWeight: 700, fontSize: "15px", color: "#111" }}>Revenue Overview</span>
-            <PeriodBadge value={revPeriod} onChange={setRevPeriod} options={["This Week", "This Month", "This Year"]} />
           </div>
           <div style={{ marginBottom: "14px" }}>
             {revenueLoading && revTotal == null
@@ -376,7 +379,7 @@ const Dashboard = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#aaa" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: "#aaa" }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v/1000).toFixed(0)}K`} />
+                  <YAxis tick={{ fontSize: 10, fill: "#aaa" }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `₹${(v/1000).toFixed(0)}K` : `₹${v}`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="value" stroke="#1E8E3E" strokeWidth={2.5}
                     fill="url(#revGrad)" dot={{ fill: "#1E8E3E", r: 4, strokeWidth: 0 }}
@@ -484,9 +487,8 @@ const Dashboard = () => {
 
         {/* User Growth */}
         <Card style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+          <div style={{ marginBottom: "4px" }}>
             <span style={{ fontWeight: 700, fontSize: "15px", color: "#111" }}>User Growth</span>
-            <PeriodBadge value={userPeriod} onChange={setUserPeriod} options={["This Month", "This Quarter", "This Year"]} />
           </div>
           <div style={{ marginBottom: "14px" }}>
             {userGrowthLoading && totalUsers == null
@@ -506,7 +508,7 @@ const Dashboard = () => {
                 <BarChart data={userGrowthData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#aaa" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: "#aaa" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
+                  <YAxis tick={{ fontSize: 9, fill: "#aaa" }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="users" radius={[4, 4, 0, 0]}>
                     {userGrowthData.map((_, i) => (
@@ -521,9 +523,8 @@ const Dashboard = () => {
 
         {/* Consultations Overview */}
         <Card style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+          <div style={{ marginBottom: "4px" }}>
             <span style={{ fontWeight: 700, fontSize: "15px", color: "#111" }}>Consultations Overview</span>
-            <PeriodBadge value={consultPeriod} onChange={setConsultPeriod} options={["This Week", "This Month"]} />
           </div>
           <div style={{ marginBottom: "10px" }}>
             {consultLoading && consultTotal == null
@@ -549,7 +550,7 @@ const Dashboard = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#aaa" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: "#aaa" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
+                  <YAxis tick={{ fontSize: 9, fill: "#aaa" }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="value" stroke="#1E8E3E" strokeWidth={2}
                     fill="url(#consultGrad)" dot={{ fill: "#1E8E3E", r: 3, strokeWidth: 0 }}
@@ -559,11 +560,10 @@ const Dashboard = () => {
             )}
           </div>
           {/* Stats strip */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #f0f4f1" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #f0f4f1" }}>
             {[
               { label: "Completed", value: consultBreakdown?.completed?.count, pct: consultBreakdown?.completed?.percent, color: "#1E8E3E" },
               { label: "Scheduled", value: consultBreakdown?.scheduled?.count, pct: consultBreakdown?.scheduled?.percent, color: "#f59e0b" },
-              { label: "Cancelled", value: consultBreakdown?.cancelled?.count, pct: consultBreakdown?.cancelled?.percent, color: "#ef4444" },
             ].map(s => (
               <div key={s.label} style={{ textAlign: "center", padding: "8px", background: "#fafcfa", borderRadius: "10px" }}>
                 <p style={{ margin: 0, fontSize: "10px", color: "#888", fontWeight: 500 }}>{s.label}</p>
