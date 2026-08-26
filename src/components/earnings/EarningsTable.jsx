@@ -273,7 +273,7 @@ export default function EarningsTable() {
   const renderTableHead = () => {
     if (mode === "diet_plans") return ["S.No", "User", "Plan", "Amount", "Discount", "Final", "Per Month", "Status", "Order ID", "Date"].map((c) => <TH key={c}>{c}</TH>);
     if (mode === "appointments") return ["S.No", "Client", "Dietitian", "Appt Date", "Gross Fee", "Final", "Commission", "Dietitian Earn", "Status", "Payment ID", "Date"].map((c) => <TH key={c}>{c}</TH>);
-    if (mode === "registrations") return ["S.No", "Email", "Amount", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
+    if (mode === "registrations") return ["S.No", "Dietitian", "Phone", "Amount", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
     if (mode === "courses") return ["S.No", "Name", "Email", "Phone", "Course Fee", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
     return null;
   };
@@ -322,7 +322,8 @@ export default function EarningsTable() {
     if (mode === "registrations") return (
       <TR key={t.id} index={i}>
         <TD style={{ fontWeight: 700, color: "#d97706", fontSize: "13px" }}>{sno}</TD>
-        <TD style={{ fontWeight: 600, fontSize: "13px", color: "#111827" }}>{t.email || "—"}</TD>
+        <TD><UserCell name={t.name} email={t.email} /></TD>
+        <TD style={{ fontSize: "12px", color: "#374151", fontWeight: 500 }}>{t.phone || "—"}</TD>
         <TD style={{ fontWeight: 800, color: "#d97706", fontSize: "14px" }}>{fmt(t.amount)}</TD>
         <TD><StatusBadge status={t.status} /></TD>
         <TD style={{ fontFamily: "monospace", fontSize: "11px", color: "#6b7280" }}>{t.razorpay_order_id || "—"}</TD>
@@ -348,7 +349,7 @@ export default function EarningsTable() {
     return null;
   };
 
-  const minTableWidth = { diet_plans: "1000px", appointments: "1200px", registrations: "860px", courses: "1000px" }[mode] || "900px";
+  const minTableWidth = { diet_plans: "1000px", appointments: "1200px", registrations: "1050px", courses: "1000px" }[mode] || "900px";
 
   return (
     <div>

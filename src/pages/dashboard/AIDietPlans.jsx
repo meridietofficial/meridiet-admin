@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LuBrainCircuit, LuClock, LuCheckCircle } from "react-icons/lu";
+import { LuBrainCircuit, LuClock, LuCheckCircle, LuLoader, LuXCircle } from "react-icons/lu";
 import { HiChartBar } from "react-icons/hi";
 import AIDietPlanTable from "../../components/ai-diet-plans/AIDietPlanTable";
 
@@ -19,7 +19,7 @@ const StatBox = ({ label, value, icon, color, bg }) => (
 
 export default function AIDietPlans() {
   const [activeTab, setActiveTab] = useState("completed");
-  const [counts, setCounts]       = useState({ completed: null, sent: null });
+  const [counts, setCounts]       = useState({ completed: null, sent: null, failed: null, generating: null });
 
   return (
     <div style={{ padding: "4px 0" }}>
@@ -41,9 +41,11 @@ export default function AIDietPlans() {
 
         {/* Stat boxes */}
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <StatBox label="Pending Review" value={counts.completed} icon={<LuClock style={{ color: "#3b82f6", fontSize: "18px" }} />}        color="#3b82f6" bg="#eff6ff" />
-          <StatBox label="Sent"           value={counts.sent}      icon={<LuCheckCircle style={{ color: "#10B981", fontSize: "18px" }} />}   color="#10B981" bg="#ecfdf5" />
-          <StatBox label="Total"          value={counts.completed != null && counts.sent != null ? counts.completed + counts.sent : null} icon={<HiChartBar style={{ color: "#6366f1", fontSize: "18px" }} />} color="#6366f1" bg="#f5f3ff" />
+          <StatBox label="Pending Review" value={counts.completed}  icon={<LuClock style={{ color: "#3b82f6", fontSize: "18px" }} />}      color="#3b82f6" bg="#eff6ff" />
+          <StatBox label="Sent"           value={counts.sent}       icon={<LuCheckCircle style={{ color: "#10B981", fontSize: "18px" }} />} color="#10B981" bg="#ecfdf5" />
+          <StatBox label="Generating"     value={counts.generating} icon={<LuLoader style={{ color: "#F59E0B", fontSize: "18px" }} />}      color="#F59E0B" bg="#FFF8E1" />
+          <StatBox label="Failed"         value={counts.failed}     icon={<LuXCircle style={{ color: "#EF4444", fontSize: "18px" }} />}     color="#EF4444" bg="#FEF2F2" />
+          <StatBox label="Total"          value={[counts.completed, counts.sent, counts.failed, counts.generating].every(v => v != null) ? counts.completed + counts.sent + counts.failed + counts.generating : null} icon={<HiChartBar style={{ color: "#6366f1", fontSize: "18px" }} />} color="#6366f1" bg="#f5f3ff" />
         </div>
       </div>
 

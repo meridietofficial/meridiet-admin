@@ -88,7 +88,7 @@ export default function AIDietPlanTable({ activeTab, onTabChange, onCountsChange
   const [plans, setPlans]           = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 15, total: 0, pages: 1 });
   const [currentPage, setCurrentPage] = useState(1);
-  const [tabCounts, setTabCounts]   = useState({ completed: null, sent: null });
+  const [tabCounts, setTabCounts]   = useState({ completed: null, sent: null, failed: null, generating: null });
 
   const [search, setSearch]                     = useState("");
   const [debouncedSearch, setDebouncedSearch]   = useState("");
@@ -143,14 +143,18 @@ export default function AIDietPlanTable({ activeTab, onTabChange, onCountsChange
     if (debouncedSearch) base.append("search", debouncedSearch);
     base.append("page", "1"); base.append("limit", "1");
 
-    const pending = new URLSearchParams(base); pending.append("status", "completed");
-    const sent    = new URLSearchParams(base); sent.append("status", "sent");
+    const pending    = new URLSearchParams(base); pending.append("status", "completed");
+    const sent       = new URLSearchParams(base); sent.append("status", "sent");
+    const failed     = new URLSearchParams(base); failed.append("status", "failed");
+    const generating = new URLSearchParams(base); generating.append("status", "generating");
 
     Promise.all([
-      API.apiGet("aiDietPlans", `?${pending}`).then((r) => r?.data?.data?.pagination?.total ?? null).catch(() => null),
-      API.apiGet("aiDietPlans", `?${sent}`).then((r)    => r?.data?.data?.pagination?.total ?? null).catch(() => null),
-    ]).then(([completedCount, sentCount]) => {
-      const counts = { completed: completedCount, sent: sentCount };
+      API.apiGet("aiDietPlans", `?${pending}`).then((r)    => r?.data?.data?.pagination?.total ?? null).catch(() => null),
+      API.apiGet("aiDietPlans", `?${sent}`).then((r)       => r?.data?.data?.pagination?.total ?? null).catch(() => null),
+      API.apiGet("aiDietPlans", `?${failed}`).then((r)     => r?.data?.data?.pagination?.total ?? null).catch(() => null),
+      API.apiGet("aiDietPlans", `?${generating}`).then((r) => r?.data?.data?.pagination?.total ?? null).catch(() => null),
+    ]).then(([completedCount, sentCount, failedCount, generatingCount]) => {
+      const counts = { completed: completedCount, sent: sentCount, failed: failedCount, generating: generatingCount };
       setTabCounts(counts);
       if (onCountsChange) onCountsChange(counts);
     });
@@ -179,7 +183,7 @@ export default function AIDietPlanTable({ activeTab, onTabChange, onCountsChange
             key={tab.key}
             active={activeTab === tab.key}
             onClick={() => { onTabChange(tab.key); setCurrentPage(1); }}
-            count={tab.key === "completed" ? tabCounts.completed : tab.key === "sent" ? tabCounts.sent : undefined}
+            count={tabCounts[tab.key] ?? undefined}
           >
             {tab.label}
           </TabBtn>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { Table, FormControl, Modal, Button } from "react-bootstrap";
 import { FaSort, FaChevronDown, FaEye, FaEyeSlash, FaCheckCircle, FaExternalLinkAlt, FaFileExcel, FaCalendarAlt, FaFilter, FaPlus, FaTrash, FaUserPlus } from "react-icons/fa";
 import { MdBlock, MdCheckCircle, MdDelete, MdClose } from "react-icons/md";
@@ -276,6 +277,139 @@ function SpecializationInput({ selected, onChange }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function SearchableSelect({ options, value, onChange, placeholder, disabled, loading, error }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState(null);
+  const ref = useRef(null);
+  const inputRef = useRef(null);
+
+  const filtered = options.filter((opt) =>
+    opt.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const updateRect = () => {
+    if (ref.current) setRect(ref.current.getBoundingClientRect());
+  };
+
+  const handleSelect = (opt) => {
+    onChange(opt);
+    setQuery("");
+    setOpen(false);
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange("");
+    setQuery("");
+    setOpen(false);
+  };
+
+  const handleContainerClick = () => {
+    if (disabled) return;
+    updateRect();
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    const reposition = () => updateRect();
+    document.addEventListener("mousedown", close);
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [open]);
+
+  const dropdown = open && !disabled && rect && ReactDOM.createPortal(
+    <div
+      style={{
+        position: "fixed",
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        background: "#fff",
+        border: "1px solid #1E8E3E",
+        borderTop: "none",
+        borderRadius: "0 0 8px 8px",
+        maxHeight: "200px",
+        overflowY: "auto",
+        zIndex: 9999,
+        boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
+      }}
+    >
+      {filtered.length ? filtered.map((opt) => (
+        <div
+          key={opt}
+          onMouseDown={(e) => { e.preventDefault(); handleSelect(opt); }}
+          style={{ padding: "9px 14px", cursor: "pointer", fontSize: "13px", color: opt === value ? "#1E8E3E" : "#374151", fontWeight: opt === value ? 700 : 400, background: opt === value ? "#f0f9f3" : "#fff", transition: "background 0.12s" }}
+          onMouseEnter={(e) => { if (opt !== value) e.currentTarget.style.background = "#f9fafb"; }}
+          onMouseLeave={(e) => { if (opt !== value) e.currentTarget.style.background = opt === value ? "#f0f9f3" : "#fff"; }}
+        >
+          {opt}
+        </div>
+      )) : (
+        <div style={{ padding: "14px", fontSize: "13px", color: "#9ca3af", textAlign: "center" }}>No results found</div>
+      )}
+    </div>,
+    document.body
+  );
+
+  return (
+    <div ref={ref}>
+      <div
+        onClick={handleContainerClick}
+        style={{
+          display: "flex", alignItems: "center",
+          border: `1px solid ${error ? "#ef4444" : open ? "#1E8E3E" : "#e5e5e5"}`,
+          borderRadius: "8px",
+          background: disabled ? "#f9fafb" : "#fff",
+          padding: "0 10px", cursor: disabled ? "not-allowed" : "text",
+          opacity: disabled ? 0.6 : 1, minHeight: "40px",
+          transition: "border-color 0.15s",
+        }}
+      >
+        {open ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${placeholder}…`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ border: "none", outline: "none", flex: 1, padding: "9px 0", fontSize: "13px", background: "transparent", color: "#111827" }}
+          />
+        ) : (
+          <span style={{ flex: 1, padding: "9px 0", fontSize: "13px", color: value ? "#111827" : "#9ca3af", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {value || placeholder}
+          </span>
+        )}
+        {loading ? (
+          <div style={{ width: "14px", height: "14px", border: "2px solid #e5e5e5", borderTopColor: "#1E8E3E", borderRadius: "50%", animation: "spin 0.7s linear infinite", flexShrink: 0, marginLeft: "6px" }} />
+        ) : value && !open ? (
+          <MdClose
+            style={{ color: "#9ca3af", cursor: "pointer", fontSize: "16px", flexShrink: 0, marginLeft: "6px" }}
+            onClick={handleClear}
+          />
+        ) : (
+          <FaChevronDown style={{ color: "#9ca3af", fontSize: "12px", flexShrink: 0, marginLeft: "6px", transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
+        )}
+      </div>
+      {dropdown}
     </div>
   );
 }
@@ -579,12 +713,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
       if (!registerForm.registrationNumber.trim()) errs.registrationNumber = "Required";
       if (!registerForm.experience) errs.experience = "Select an experience level";
     }
-    if (step === 3) {
-      if (!registerForm.profilePhoto) errs.profilePhoto = "Profile photo is required";
-      if (!registerForm.degreeCertificate) errs.degreeCertificate = "Degree certificate is required";
-      if (!registerForm.idProof) errs.idProof = "ID proof is required";
-      if (!registerForm.agreeTerms) errs.agreeTerms = "You must agree to the Terms & Conditions";
-    }
+    // Step 3 documents are all optional from the admin side
     return errs;
   };
 
@@ -674,7 +803,14 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
   };
 
   const emptyLabel = showVerify ? "No pending requests found." : "No approved dietitians found.";
-  const columns = ["#", "Dietitian", "Contact", "Location", "Specialization", "Experience", "Active", "Actions"];
+  const columns = ["#", "Dietitian", "Contact", "Location", "Specialization", "Experience", "Access Type", "Active", "Actions"];
+
+  const ACCESS_TYPE_COLORS = {
+    pending: { bg: "#FFF8E1", color: "#F59E0B", dot: "#F59E0B" },
+    trial: { bg: "#ECFDF5", color: "#10B981", dot: "#10B981" },
+    expired: { bg: "#FEF2F2", color: "#EF4444", dot: "#EF4444" },
+    paid: { bg: "#EFF6FF", color: "#3B82F6", dot: "#3B82F6" },
+  };
 
   return (
     <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
@@ -859,7 +995,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
               <thead>
                 <tr>
                   {columns.map((col) => {
-                    const colWidths = { "#": "48px", "Dietitian": "180px", "Contact": "220px", "Location": "140px", "Specialization": "140px", "Experience": "110px", "Active": "90px", "Actions": "150px" };
+                    const colWidths = { "#": "48px", "Dietitian": "180px", "Contact": "220px", "Location": "140px", "Specialization": "140px", "Experience": "110px", "Access Type": "110px", "Active": "90px", "Actions": "150px" };
                     return (
                       <th key={col} style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "12px", padding: "12px 14px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px", width: colWidths[col] || "auto" }}>{col}</th>
                     );
@@ -926,6 +1062,21 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
 
                       {/* Experience */}
                       <td style={{ padding: "10px 14px", fontSize: "11px", color: "#666", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={d.experience || ""}>{d.experience || "—"}</td>
+
+                      {/* Access Type */}
+                      <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                        {(() => {
+                          const accessType = d.access_type || "pending";
+                          const style = ACCESS_TYPE_COLORS[accessType] || ACCESS_TYPE_COLORS.pending;
+                          const label = accessType.charAt(0).toUpperCase() + accessType.slice(1);
+                          return (
+                            <span style={{ background: style.bg, color: style.color, borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}>
+                              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: style.dot }} />
+                              {label}
+                            </span>
+                          );
+                        })()}
+                      </td>
 
                       {/* Active */}
                       <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
@@ -1099,42 +1250,26 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                       </div>
                       <div className="col-md-6">
                         <label style={LS}>State *</label>
-                        <div style={{ position: "relative" }}>
-                          <select
-                            style={{ ...IS(registerErrors.state), appearance: "none", paddingRight: "32px" }}
-                            value={registerForm.state}
-                            onChange={(e) => handleStateChange(e.target.value)}
-                          >
-                            <option value="">Select a state</option>
-                            {IN_STATES.map((s) => (
-                              <option key={s.isoCode} value={s.name}>{s.name}</option>
-                            ))}
-                          </select>
-                          <FaChevronDown style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: "12px", pointerEvents: "none" }} />
-                        </div>
+                        <SearchableSelect
+                          options={IN_STATES.map((s) => s.name)}
+                          value={registerForm.state}
+                          onChange={handleStateChange}
+                          placeholder="Select a state"
+                          error={registerErrors.state}
+                        />
                         {registerErrors.state && <p style={ES}>{registerErrors.state}</p>}
                       </div>
                       <div className="col-md-6">
                         <label style={LS}>City *</label>
-                        <div style={{ position: "relative" }}>
-                          <select
-                            style={{ ...IS(registerErrors.city), appearance: "none", paddingRight: "32px", opacity: (!registerForm.state || citiesLoading) ? 0.6 : 1 }}
-                            value={registerForm.city}
-                            onChange={(e) => setRF("city", e.target.value)}
-                            disabled={!registerForm.state || citiesLoading}
-                          >
-                            <option value="">
-                              {citiesLoading ? "Loading cities…" : registerForm.state ? "Select a city" : "Select a state first"}
-                            </option>
-                            {cities.map((city) => (
-                              <option key={city} value={city}>{city}</option>
-                            ))}
-                          </select>
-                          {citiesLoading
-                            ? <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", width: "14px", height: "14px", border: "2px solid #e5e5e5", borderTopColor: "#1E8E3E", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-                            : <FaChevronDown style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: "12px", pointerEvents: "none" }} />
-                          }
-                        </div>
+                        <SearchableSelect
+                          options={cities}
+                          value={registerForm.city}
+                          onChange={(v) => setRF("city", v)}
+                          placeholder={citiesLoading ? "Loading cities…" : registerForm.state ? "Select a city" : "Select a state first"}
+                          disabled={!registerForm.state || citiesLoading}
+                          loading={citiesLoading}
+                          error={registerErrors.city}
+                        />
                         {registerErrors.city && <p style={ES}>{registerErrors.city}</p>}
                       </div>
                     </div>
@@ -1148,14 +1283,13 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                     <div className="row g-3">
                       <div className="col-md-12">
                         <label style={LS}>Highest Degree *</label>
-                        <select style={{ ...IS(registerErrors.highestDegree), appearance: "none" }} value={registerForm.highestDegree} onChange={(e) => setRF("highestDegree", e.target.value)}>
-                          <option value="">Select a degree</option>
-                          {DEGREE_GROUPS.map(({ group, options }) => (
-                            <optgroup key={group} label={group}>
-                              {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                            </optgroup>
-                          ))}
-                        </select>
+                        <SearchableSelect
+                          options={DEGREE_GROUPS.flatMap(({ options }) => options)}
+                          value={registerForm.highestDegree}
+                          onChange={(v) => setRF("highestDegree", v)}
+                          placeholder="Select a degree"
+                          error={registerErrors.highestDegree}
+                        />
                         {registerErrors.highestDegree && <p style={ES}>{registerErrors.highestDegree}</p>}
                       </div>
                       <div className="col-md-12">
@@ -1200,34 +1334,20 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                     {SH("Step 3 — Document Upload")}
                     <div className="row g-3">
                       <div className="col-md-12">
-                        <label style={LS}>Profile Photo * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>JPG / PNG • Max 2MB</span></label>
-                        <FileUpload label="Profile Photo" accept={["image/jpeg", "image/png"]} maxSizeMB={2} value={registerForm.profilePhoto} onChange={(f) => setRFFile("profilePhoto", f)} error={registerErrors.profilePhoto} />
+                        <label style={LS}>Profile Photo <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>optional • JPG / PNG • Max 2MB</span></label>
+                        <FileUpload label="Profile Photo" accept={["image/jpeg", "image/png"]} maxSizeMB={2} value={registerForm.profilePhoto} onChange={(f) => setRFFile("profilePhoto", f)} error={null} />
                       </div>
                       <div className="col-md-12">
-                        <label style={LS}>Degree Certificate * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>JPG / PNG / PDF • Max 5MB</span></label>
-                        <FileUpload label="Degree Certificate" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.degreeCertificate} onChange={(f) => setRFFile("degreeCertificate", f)} error={registerErrors.degreeCertificate} />
+                        <label style={LS}>Degree Certificate <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>optional • JPG / PNG / PDF • Max 5MB</span></label>
+                        <FileUpload label="Degree Certificate" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.degreeCertificate} onChange={(f) => setRFFile("degreeCertificate", f)} error={null} />
                       </div>
                       <div className="col-md-12">
-                        <label style={LS}>ID Proof * <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>JPG / PNG / PDF • Max 5MB</span></label>
-                        <FileUpload label="ID Proof" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.idProof} onChange={(f) => setRFFile("idProof", f)} error={registerErrors.idProof} />
+                        <label style={LS}>ID Proof <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>optional • JPG / PNG / PDF • Max 5MB</span></label>
+                        <FileUpload label="ID Proof" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.idProof} onChange={(f) => setRFFile("idProof", f)} error={null} />
                       </div>
                       <div className="col-md-12">
                         <label style={LS}>Registration Certificate <span style={{ fontSize: "10px", color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>optional • JPG / PNG / PDF • Max 5MB</span></label>
                         <FileUpload label="Registration Certificate" accept={["image/jpeg", "image/png", "application/pdf"]} maxSizeMB={5} value={registerForm.registrationCertificate} onChange={(f) => setRFFile("registrationCertificate", f)} error={null} />
-                      </div>
-                      <div className="col-md-12" style={{ marginTop: "4px" }}>
-                        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
-                          <input
-                            type="checkbox"
-                            checked={registerForm.agreeTerms}
-                            onChange={(e) => { setRF("agreeTerms", e.target.checked); }}
-                            style={{ marginTop: "3px", accentColor: "#1E8E3E", width: "16px", height: "16px", flexShrink: 0 }}
-                          />
-                          <span style={{ fontSize: "13px", color: registerErrors.agreeTerms ? "#ef4444" : "#374151", lineHeight: "1.5" }}>
-                            I agree to the <strong>Terms &amp; Conditions</strong> and <strong>Privacy Policy</strong>
-                          </span>
-                        </label>
-                        {registerErrors.agreeTerms && <p style={{ ...ES, marginTop: "6px" }}>{registerErrors.agreeTerms}</p>}
                       </div>
                     </div>
                   </div>

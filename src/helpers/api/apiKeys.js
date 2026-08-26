@@ -13,7 +13,6 @@ const apiKeys = {
   toggleDietitianStatus: "admin/toggle-block-dietitian",
   deleteDietitian: "admin/delete-dietitian",
   registerDietitian: "admin/dietitians/register",
-  awsKeys: "dietitian/aws-keys",
 
   //diet chart requests
   dietFormRequests: "admin/diet-form-requests",

@@ -36,7 +36,8 @@ app.post("/api/upload-image", async (req, res) => {
     });
 
     const buffer = Buffer.from(fileData, "base64");
-    const uniqueKey = `profile/${uuidv4()}_${fileName}`;
+    const folder = req.body.folder || "profile";
+    const uniqueKey = `${folder}/${uuidv4()}_${fileName}`;
 
     await s3.send(
       new PutObjectCommand({
