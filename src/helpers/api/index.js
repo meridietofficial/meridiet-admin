@@ -32,8 +32,11 @@ class API {
     return axios.put(getUrlByKey(key), args, headers);
   };
 
-  static apiPatch = async (key, args, headers) => {
-    return axios.patch(getUrlByKey(key), args, headers);
+  static apiPatch = async (key, args, pathOrHeaders, headers) => {
+    if (typeof pathOrHeaders === "string") {
+      return axios.patch(getUrlByKey(key) + pathOrHeaders, args, headers);
+    }
+    return axios.patch(getUrlByKey(key), args, pathOrHeaders);
   };
 
   static apiDel = async (key, config = {}) => {

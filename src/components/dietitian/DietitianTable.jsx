@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { Table, FormControl, Modal, Button } from "react-bootstrap";
-import { FaSort, FaChevronDown, FaEye, FaEyeSlash, FaCheckCircle, FaExternalLinkAlt, FaFileExcel, FaCalendarAlt, FaFilter, FaPlus, FaTrash, FaUserPlus } from "react-icons/fa";
+import { FaSort, FaChevronDown, FaEye, FaEyeSlash, FaCheckCircle, FaExternalLinkAlt, FaFileExcel, FaCalendarAlt, FaFilter, FaPlus, FaTrash, FaUserPlus, FaTag } from "react-icons/fa";
 import { MdBlock, MdCheckCircle, MdDelete, MdClose } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
 import API from "../../helpers/api";
@@ -450,6 +450,7 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
 
   // Block / Delete states
   const [togglingId, setTogglingId] = useState(null);
+  const [offerTogglingId, setOfferTogglingId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -640,6 +641,21 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
       })
       .catch((err) => toast.error(err?.response?.data?.message || "Failed to update status."))
       .finally(() => setTogglingId(null));
+  };
+
+  const handleToggleOffer = (d) => {
+    setOfferTogglingId(d.id);
+    const newVal = !d.is_under_offer;
+    API.apiPatch("toggleDietitianOffer", { is_under_offer: newVal }, `/${d.id}/toggle-offer`)
+      .then(() => {
+        toast.success(newVal ? "Added to nutrition month offer." : "Removed from offer.");
+        if (selectedDietitian?.id === d.id) {
+          setSelectedDietitian((prev) => ({ ...prev, is_under_offer: newVal }));
+        }
+        fetchDietitians();
+      })
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to update offer status."))
+      .finally(() => setOfferTogglingId(null));
   };
 
   const handleDelete = () => {
@@ -1122,6 +1138,20 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                               : <MdCheckCircle style={{ color: "#16a34a", fontSize: "16px" }} />}
                           </div>
 
+                          {/* Offer Toggle — management view only */}
+                          {!showVerify && (
+                            <div
+                              onClick={() => { if (offerTogglingId !== d.id) handleToggleOffer(d); }}
+                              title={d.is_under_offer ? "Remove from Offer" : "Add to Offer"}
+                              style={{ width: "32px", height: "32px", borderRadius: "8px", background: d.is_under_offer ? "#fff7ed" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", cursor: offerTogglingId === d.id ? "wait" : "pointer", transition: "all 0.2s" }}
+                              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}>
+                              {offerTogglingId === d.id
+                                ? <div style={{ width: "12px", height: "12px", border: "2px solid #f97316", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                                : <FaTag style={{ color: d.is_under_offer ? "#f97316" : "#94a3b8", fontSize: "13px" }} />}
+                            </div>
+                          )}
+
                           {/* Delete */}
                           <div
                             onClick={() => { setDeleteTarget(d); setShowDeleteModal(true); }}
@@ -1436,6 +1466,11 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
                         Pending Approval
                       </span>
                     )}
+                    {d.is_under_offer && (
+                      <span style={{ background: "#fff7ed", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)", borderRadius: "20px", padding: "4px 12px", fontSize: "12px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "5px", marginLeft: "6px" }}>
+                        <FaTag size={10} /> Nutrition Month Offer
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1580,6 +1615,26 @@ export default function DietitianTable({ apiKey = "dietitianList", showVerify = 
               style={{ background: "#1E8E3E", border: "none", borderRadius: "8px", padding: "8px 20px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}
             >
               <FaCheckCircle /> {verifying ? "Verifying..." : "Verify Dietitian"}
+            </Button>
+          )}
+          {!showVerify && selectedDietitian && (
+            <Button
+              onClick={() => handleToggleOffer(selectedDietitian)}
+              disabled={offerTogglingId === selectedDietitian?.id}
+              style={{
+                background: selectedDietitian.is_under_offer ? "#fff7ed" : "linear-gradient(135deg, #f97316, #ea580c)",
+                border: selectedDietitian.is_under_offer ? "1px solid rgba(249,115,22,0.4)" : "none",
+                color: selectedDietitian.is_under_offer ? "#f97316" : "#fff",
+                borderRadius: "8px", padding: "8px 20px", fontWeight: 700,
+                display: "flex", alignItems: "center", gap: "6px",
+              }}
+            >
+              <FaTag size={12} />
+              {offerTogglingId === selectedDietitian?.id
+                ? "Updating..."
+                : selectedDietitian.is_under_offer
+                ? "Remove from Offer"
+                : "Add to Offer"}
             </Button>
           )}
           <Button variant="secondary" onClick={() => setShowDetail(false)} style={{ borderRadius: "8px", padding: "8px 20px", fontWeight: 600 }}>Close</Button>
