@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Table } from "react-bootstrap";
 import { FaSearch, FaTimes, FaFilter } from "react-icons/fa";
-import { LuChevronDown, LuX, LuTrendingUp, LuUsers, LuCalendarDays, LuBookOpen, LuStethoscope } from "react-icons/lu";
+import { LuChevronDown, LuX, LuTrendingUp, LuUsers, LuCalendarDays, LuBookOpen, LuStethoscope, LuSalad } from "react-icons/lu";
 import GlobalPagination from "../common/GlobalPagination";
 import earningsService from "../../services/earningsService";
 import toast from "react-hot-toast";
@@ -37,8 +38,8 @@ function StatusBadge({ status }) {
 }
 
 // ── Reusable table primitives ─────────────────────────────────────────────────
-function TH({ children }) {
-  return <th style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "13px", padding: "14px 16px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px" }}>{children}</th>;
+function TH({ children, style = {} }) {
+  return <th style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "13px", padding: "14px 16px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px", ...style }}>{children}</th>;
 }
 function TD({ children, style }) {
   return <td style={{ padding: "12px 16px", verticalAlign: "middle", ...style }}>{children}</td>;
@@ -177,9 +178,16 @@ const STATUS_OPTIONS_APT = [
   { value: "refunded", label: "Refunded" },
 ];
 
+const VALID_MODES = ["diet_plans", "appointments", "registrations", "courses"];
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function EarningsTable() {
-  const [mode, setMode] = useState("diet_plans");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tabFromUrl = searchParams.get("tab");
+  const initialMode = VALID_MODES.includes(tabFromUrl) ? tabFromUrl : "diet_plans";
+
+  const [mode, setMode] = useState(initialMode);
   const [status, setStatus] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -272,7 +280,19 @@ export default function EarningsTable() {
   // ── Table columns per mode ────────────────────────────────────────────────
   const renderTableHead = () => {
     if (mode === "diet_plans") return ["S.No", "User", "Plan", "Amount", "Discount", "Final", "Per Month", "Status", "Order ID", "Date"].map((c) => <TH key={c}>{c}</TH>);
-    if (mode === "appointments") return ["S.No", "Client", "Dietitian", "Appt Date", "Gross Fee", "Final", "Commission", "Dietitian Earn", "Status", "Payment ID", "Date"].map((c) => <TH key={c}>{c}</TH>);
+    if (mode === "appointments") return [
+      { label: "S.No",           style: { width: "40px", padding: "14px 8px" } },
+      { label: "Client",        style: { minWidth: "180px" } },
+      { label: "Dietitian",     style: { minWidth: "160px" } },
+      { label: "Appt Date" },
+      { label: "Amount" },
+      { label: "Commission" },
+      { label: "Dietitian Earn" },
+      { label: "Diet Plan",     style: { minWidth: "150px" } },
+      { label: "Status" },
+      { label: "Payment ID" },
+      { label: "Date" },
+    ].map((c) => <TH key={c.label} style={c.style}>{c.label}</TH>);
     if (mode === "registrations") return ["S.No", "Dietitian", "Phone", "Amount", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
     if (mode === "courses") return ["S.No", "Name", "Email", "Phone", "Course Fee", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
     return null;
@@ -296,24 +316,56 @@ export default function EarningsTable() {
     );
     if (mode === "appointments") return (
       <TR key={t.id} index={i}>
-        <TD style={{ fontWeight: 700, color: "#2563eb", fontSize: "13px" }}>{sno}</TD>
-        <TD><UserCell name={t.client_name} email={t.client_email} avatar={t.client_avatar} /></TD>
+        <TD style={{ fontWeight: 700, color: "#2563eb", fontSize: "13px", padding: "12px 8px", textAlign: "center" }}>{sno}</TD>
+        <TD>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: "13px", color: "#111827" }}>{t.client_name || "—"}</p>
+          <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{t.client_email || ""}</p>
+        </TD>
         <TD>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <LuStethoscope size={13} color="#2563eb" />
             </div>
-            <span style={{ fontWeight: 600, fontSize: "13px", color: "#111827" }}>{t.dietitian_name || "—"}</span>
+            <span style={{ fontWeight: 600, fontSize: "13px", color: "#111827", whiteSpace: "nowrap" }}>{t.dietitian_name || "—"}</span>
           </div>
         </TD>
         <TD style={{ fontSize: "12.5px", color: "#374151", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(t.appointment_date)}</TD>
-        <TD style={{ fontWeight: 600, color: "#374151" }}>{fmt(t.fee)}</TD>
-        <TD style={{ fontWeight: 800, color: "#2563eb", fontSize: "14px" }}>{fmt(t.final_amount)}</TD>
+        <TD>
+          {t.final_amount != null && t.final_amount !== t.fee
+            ? <><div style={{ fontSize: "11px", color: "#9ca3af", textDecoration: "line-through" }}>{fmt(t.fee)}</div>
+                <div style={{ fontWeight: 800, color: "#2563eb", fontSize: "14px" }}>{fmt(t.final_amount)}</div></>
+            : <span style={{ fontWeight: 800, color: "#2563eb", fontSize: "14px" }}>{fmt(t.fee)}</span>
+          }
+        </TD>
         <TD style={{ fontWeight: 700, color: "#ef4444" }}>
           {fmt(t.platform_commission)}
           <div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{t.platform_commission_pct ?? 20}%</div>
         </TD>
         <TD style={{ fontWeight: 800, color: "#16a34a", fontSize: "14px" }}>{fmt(t.dietitian_earnings)}</TD>
+        <TD>
+          {(() => {
+            if (!t.plan_id) return <span style={{ fontSize: "11px", color: "#d1d5db" }}>—</span>;
+            const canView = (t.plan_status === "completed" || t.plan_status === "sent") && t.plan_pdf_url;
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                {canView && (
+                  <a href={t.plan_pdf_url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                    <button
+                      style={{ height: "28px", borderRadius: "8px", background: "#f0f9f3", border: "1px solid rgba(30,142,62,0.3)", display: "flex", alignItems: "center", gap: "5px", padding: "0 10px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "#1E8E3E", whiteSpace: "nowrap" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#1E8E3E"; e.currentTarget.style.color = "#fff"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "#f0f9f3"; e.currentTarget.style.color = "#1E8E3E"; }}
+                    >
+                      <LuSalad size={12} /> Diet Plan
+                    </button>
+                  </a>
+                )}
+                {t.plan_sent_at && (
+                  <span style={{ fontSize: "10px", color: "#6b7280", paddingLeft: "2px" }}>{fmtDate(t.plan_sent_at)}</span>
+                )}
+              </div>
+            );
+          })()}
+        </TD>
         <TD><StatusBadge status={t.payment_status || t.status} /></TD>
         <TD style={{ fontFamily: "monospace", fontSize: "11px", color: "#6b7280" }}>{t.payment_id || "—"}</TD>
         <TD style={{ fontSize: "12px", color: "#9ca3af", whiteSpace: "nowrap" }}>{fmtDate(t.created_at)}</TD>
@@ -349,7 +401,7 @@ export default function EarningsTable() {
     return null;
   };
 
-  const minTableWidth = { diet_plans: "1000px", appointments: "1200px", registrations: "1050px", courses: "1000px" }[mode] || "900px";
+  const minTableWidth = { diet_plans: "1000px", appointments: "1250px", registrations: "1050px", courses: "1000px" }[mode] || "900px";
 
   return (
     <div>
@@ -366,7 +418,7 @@ export default function EarningsTable() {
             const active = mode === m.value;
             const Icon = m.icon;
             return (
-              <button key={m.value} onClick={() => setMode(m.value)}
+              <button key={m.value} onClick={() => { setMode(m.value); setSearchParams({ tab: m.value }); }}
                 style={{ padding: "10px 22px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13.5px", color: active ? m.color : "#6b7280", borderBottom: `2.5px solid ${active ? m.color : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "7px" }}>
                 <Icon size={15} />
                 {m.label}

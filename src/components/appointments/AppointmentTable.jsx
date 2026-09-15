@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Table, Modal, Button } from "react-bootstrap";
 import { FaEye, FaSearch, FaTimes, FaVideo, FaMapMarkerAlt, FaStar, FaPhone, FaEnvelope, FaFilter, FaBan, FaCheck } from "react-icons/fa";
-import { LuCalendarDays, LuClock, LuStethoscope, LuChevronDown, LuX } from "react-icons/lu";
+import { LuCalendarDays, LuClock, LuStethoscope, LuChevronDown, LuX, LuSalad } from "react-icons/lu";
 import { MdPayment } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
 import appointmentService from "../../services/appointmentService";
@@ -277,7 +278,10 @@ const PAYMENT_OPTIONS = [
 //  MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
 export default function AppointmentTable() {
-  const [activeView, setActiveView] = useState("action_required");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_VIEWS = ["action_required", "all", "payment_history"];
+  const tabFromUrl = searchParams.get("tab");
+  const [activeView, setActiveView] = useState(VALID_VIEWS.includes(tabFromUrl) ? tabFromUrl : "action_required");
   const [actionType, setActionType] = useState("pending_payment");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -320,6 +324,17 @@ export default function AppointmentTable() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approvingPayment, setApprovingPayment] = useState(false);
+
+  // Mark Complete
+  const [markingComplete, setMarkingComplete] = useState(false);
+  const handleMarkComplete = () => {
+    if (!detail) return;
+    setMarkingComplete(true);
+    appointmentService.markComplete(detail.id)
+      .then(() => { toast.success("Appointment marked as completed!"); refreshDetail(detail.id); setRefreshKey((k) => k + 1); })
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to mark complete."))
+      .finally(() => setMarkingComplete(false));
+  };
 
   // Mark No-Show modal
   const [showMarkNoShowModal, setShowMarkNoShowModal] = useState(false);
@@ -494,7 +509,7 @@ export default function AppointmentTable() {
           {MAIN_TABS.map((tab) => {
             const active = activeView === tab.value;
             return (
-              <button key={tab.value} onClick={() => setActiveView(tab.value)}
+              <button key={tab.value} onClick={() => { setActiveView(tab.value); setSearchParams({ tab: tab.value }); }}
                 style={{ padding: "10px 28px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13.5px", color: active ? tab.color : "#6b7280", borderBottom: `2.5px solid ${active ? tab.color : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap" }}>
                 {tab.label}
               </button>
@@ -804,10 +819,21 @@ export default function AppointmentTable() {
                             </TD>
                             <TD style={{ fontSize: "12px", color: "#9ca3af", whiteSpace: "nowrap" }}>{formatDate(a.created_at)}</TD>
                             <TD>
-                              <div style={{ display: "flex", gap: "6px" }}>
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                                 <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
                                   <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
                                 </ActionBtn>
+                                {a.diet_plan?.pdf_url && (
+                                  <a href={a.diet_plan.pdf_url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                                    <button
+                                      style={{ height: "32px", borderRadius: "8px", background: "#f0f9f3", border: "1px solid rgba(30,142,62,0.3)", display: "flex", alignItems: "center", gap: "5px", padding: "0 10px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "#1E8E3E", whiteSpace: "nowrap" }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = "#1E8E3E"; e.currentTarget.style.color = "#fff"; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = "#f0f9f3"; e.currentTarget.style.color = "#1E8E3E"; }}
+                                    >
+                                      <LuSalad size={12} /> Diet Plan
+                                    </button>
+                                  </a>
+                                )}
                                 {needsApproval && (
                                   <ActionBtn onClick={() => openDetail(a.id)} title="Approve Payment" bg="#fffbeb">
                                     <MdPayment style={{ color: "#d97706", fontSize: "14px" }} />
@@ -932,6 +958,14 @@ export default function AppointmentTable() {
                   <span style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>✓ Payment Approved</span>
                 )}
                 <div style={{ marginLeft: "auto", fontSize: "12px", color: "#9ca3af" }}>Created: {formatDateTime(detail.created_at)}</div>
+                {["pending", "confirmed", "missed"].includes(detail.status) && (
+                  <button onClick={handleMarkComplete} disabled={markingComplete}
+                    style={{ height: "34px", background: "linear-gradient(135deg, #1E8E3E 0%, #166C31 100%)", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "12.5px", padding: "0 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", opacity: markingComplete ? 0.7 : 1 }}>
+                    {markingComplete
+                      ? <><span className="spinner-border spinner-border-sm" role="status" /> Marking...</>
+                      : <><FaCheck size={11} /> Mark as Completed</>}
+                  </button>
+                )}
               </div>
 
               {/* Payment Approval card */}

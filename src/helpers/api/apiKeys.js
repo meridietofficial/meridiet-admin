@@ -24,6 +24,9 @@ const apiKeys = {
   dashboardRevenue: "admin/dashboard-revenue",
   dashboardUserGrowth: "admin/dashboard-user-growth",
   dashboardConsultations: "admin/dashboard-consultations",
+  dashboardAppointmentStats: "admin/dashboard-appointment-stats",
+  dashboardRecentAppointments: "admin/dashboard-recent-appointments",
+  dashboardRecentRegistrations: "admin/dashboard-recent-registrations",
   systemOverview: "admin/system-overview",
 
   //user management

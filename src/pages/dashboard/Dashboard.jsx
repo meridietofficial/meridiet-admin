@@ -8,7 +8,7 @@ import {
   LuUsers, LuStethoscope, LuCalendarCheck, LuIndianRupee,
   LuFileText,
   LuActivity, LuServer, LuDatabase, LuHeadphones,
-  LuSalad, LuClock, LuClipboardList,
+  LuSalad, LuClock, LuClipboardList, LuCalendar as LuCalendarIcon, LuUserPlus,
 } from "react-icons/lu";
 import API from "../../helpers/api";
 
@@ -482,6 +482,13 @@ const Dashboard = () => {
         <RecentDietRequests dateRange={dateRange} />
       </div>
 
+      {/* ── Row 2b: Recent Appointments | Recent Dietitian Registrations | Appointment Overview ── */}
+      <div className="dash-row2b" style={{ display: "grid", gap: "14px", marginBottom: "18px" }}>
+        <RecentAppointments dateRange={dateRange} />
+        <RecentRegistrations dateRange={dateRange} />
+        <AppointmentOverview dateRange={dateRange} />
+      </div>
+
       {/* ── Row 3: User Growth | Consultations Overview — equal height charts ── */}
       <div className="dash-row3" style={{ display: "grid", gap: "14px", marginBottom: "18px" }}>
 
@@ -627,6 +634,7 @@ const Dashboard = () => {
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         .dash-top-grid    { grid-template-columns: repeat(5, 1fr); }
         .dash-row2        { grid-template-columns: 1.3fr 1fr 1fr; }
+        .dash-row2b       { grid-template-columns: 1fr 1fr 1fr; }
         .dash-row3        { grid-template-columns: 1fr 1fr; }
         .dash-system-grid { grid-template-columns: repeat(4, 1fr); }
 
@@ -636,9 +644,9 @@ const Dashboard = () => {
           .dash-system-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 900px) {
-          .dash-top-grid              { grid-template-columns: repeat(2, 1fr) !important; }
-          .dash-row2, .dash-row3      { grid-template-columns: 1fr !important; }
-          .dash-system-grid           { grid-template-columns: repeat(2, 1fr) !important; }
+          .dash-top-grid                          { grid-template-columns: repeat(2, 1fr) !important; }
+          .dash-row2, .dash-row2b, .dash-row3     { grid-template-columns: 1fr !important; }
+          .dash-system-grid                       { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 767px) {
           .dash-header                { flex-direction: column; gap: 10px; align-items: flex-start !important; }
@@ -758,6 +766,307 @@ function RecentDietRequests({ dateRange }) {
                       {r.created_at ? new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : ""}
                     </p>
                   </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ── Appointment Overview — pie chart (online / offline / unpaid) ─────────────
+const APPT_META = [
+  { key: "online",    label: "Online (Paid)", sub: "Razorpay · Platform", color: "#0891b2", bg: "#ecfeff", border: "#a5f3fc" },
+  { key: "offline",   label: "Offline",        sub: "Dietitian · Manual",  color: "#7c3aed", bg: "#faf5ff", border: "#ddd6fe" },
+  { key: "completed", label: "Completed",       sub: "All Sources",         color: "#1E8E3E", bg: "#e8f5ee", border: "#bbf7d0" },
+];
+
+function AppointmentOverview({ dateRange }) {
+  const [data, setData]     = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const dp = dateRange?.from && dateRange?.to ? `?from=${dateRange.from}&to=${dateRange.to}` : "";
+    API.apiGet("dashboardAppointmentStats", dp)
+      .then(res => setData(res?.data?.data ?? null))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [dateRange]);
+
+  const pieData = APPT_META.map(m => ({
+    name: m.label,
+    value: m.key === "online"    ? (data?.online?.count    ?? 0)
+         : m.key === "offline"   ? (data?.offline?.count   ?? 0)
+         :                         (data?.completed?.count ?? 0),
+  }));
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column" }}>
+      <SectionHeader title="Appointment Overview" actionLabel="View All"
+        action={() => window.location.href = "/dashboard/appointments"} />
+
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+
+        {/* Donut chart */}
+        <div style={{ position: "relative", width: "160px", height: "160px", flexShrink: 0 }}>
+          {loading ? (
+            <div style={{ width: "160px", height: "160px", borderRadius: "50%", background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%" cy="50%"
+                  innerRadius={48} outerRadius={70}
+                  dataKey="value" paddingAngle={3}
+                  startAngle={90} endAngle={-270}
+                >
+                  {APPT_META.map((m, i) => (
+                    <Cell key={i} fill={m.color} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(val, name) => [val.toLocaleString("en-IN"), name]}
+                  contentStyle={{ borderRadius: "10px", border: "1px solid #e8ede9", fontSize: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+          {/* Centre label */}
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center", pointerEvents: "none" }}>
+            {loading && data == null
+              ? <Skeleton w="48px" h="20px" radius="6px" />
+              : <p style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#111", lineHeight: 1 }}>
+                  {data?.total != null ? data.total.toLocaleString("en-IN") : "—"}
+                </p>
+            }
+            <p style={{ margin: "2px 0 0", fontSize: "10px", color: "#aaa", fontWeight: 500 }}>Total</p>
+          </div>
+        </div>
+
+        {/* 3 strips */}
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "6px", marginTop: "10px" }}>
+          {APPT_META.map((m) => {
+            const count   = m.key === "online"    ? data?.online?.count
+                          : m.key === "offline"   ? data?.offline?.count
+                          :                         data?.completed?.count;
+            const revenue = m.key === "online"    ? data?.online?.revenue
+                          : m.key === "offline"   ? data?.offline?.revenue
+                          :                         data?.completed?.revenue;
+            return (
+              <div key={m.key} style={{
+                display: "flex", alignItems: "center",
+                background: m.bg,
+                border: `1px solid ${m.border}`,
+                borderLeft: `3px solid ${m.color}`,
+                borderRadius: "8px",
+                padding: "7px 10px",
+                gap: "8px",
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, color: "#111", lineHeight: 1.3 }}>{m.label}</p>
+                  <p style={{ margin: 0, fontSize: "9.5px", color: "#888", whiteSpace: "nowrap" }}>{m.sub}</p>
+                </div>
+                <div style={{ width: "1px", height: "28px", background: m.border, flexShrink: 0 }} />
+                {[
+                  { label: "Count",   value: count   != null ? count.toLocaleString("en-IN")                    : null, colored: false },
+                  { label: "Revenue", value: revenue != null ? `₹${Number(revenue).toLocaleString("en-IN")}` : null, colored: true  },
+                ].map((stat, i) => (
+                  <div key={i} style={{ textAlign: "center", minWidth: "44px" }}>
+                    <p style={{ margin: 0, fontSize: "11px", fontWeight: 800, color: stat.colored ? m.color : "#111", lineHeight: 1.2 }}>
+                      {loading && stat.value == null
+                        ? <span style={{ display: "inline-block", width: "32px", height: "12px", borderRadius: "3px", background: "linear-gradient(90deg,#e8e8e8 25%,#d8d8d8 50%,#e8e8e8 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite", verticalAlign: "middle" }} />
+                        : (stat.value ?? "—")}
+                    </p>
+                    <p style={{ margin: 0, fontSize: "8.5px", color: "#aaa", fontWeight: 500, letterSpacing: "0.3px" }}>{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ── Recent Appointments — paid online only ────────────────────────────────────
+const APPT_STATUS_STYLE = {
+  confirmed:  { color: "#1E8E3E", bg: "#dcfce7" },
+  completed:  { color: "#0891b2", bg: "#cffafe" },
+  pending:    { color: "#f59e0b", bg: "#fef3c7" },
+  cancelled:  { color: "#ef4444", bg: "#fee2e2" },
+};
+
+function RecentAppointments({ dateRange }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const dp = dateRange?.from && dateRange?.to ? `&from=${dateRange.from}&to=${dateRange.to}` : "";
+    API.apiGet("dashboardRecentAppointments", `?limit=5${dp}`)
+      .then(res => setItems(res?.data?.data?.appointments || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [dateRange]);
+
+  return (
+    <Card>
+      <SectionHeader title="Recent Appointments" actionLabel="View All"
+        action={() => window.location.href = "/dashboard/appointments"} />
+
+      {loading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", border: "1px solid #f0f4f1" }}>
+              <Skeleton w="34px" h="34px" radius="50%" />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Skeleton w="60%" h="13px" />
+                <Skeleton w="40%" h="11px" />
+              </div>
+              <Skeleton w="60px" h="22px" radius="6px" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "30px 0", color: "#aaa" }}>
+          <LuCalendarIcon size={32} style={{ marginBottom: "8px", opacity: 0.4 }} />
+          <p style={{ margin: 0, fontSize: "13px" }}>No paid appointments found</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {items.map((r) => {
+            const ss = APPT_STATUS_STYLE[r.status] || { color: "#888", bg: "#f3f4f6" };
+            const initials = (r.client_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+            return (
+              <div key={r.id} style={{
+                display: "flex", alignItems: "center", gap: "11px",
+                padding: "10px 12px", borderRadius: "10px",
+                border: "1px solid #f0f4f1", background: "#fafcfa",
+              }}>
+                <div style={{
+                  width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+                  background: r.client_avatar ? `url(${r.client_avatar}) center/cover` : "linear-gradient(135deg,#0891b2,#38bdf8)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {!r.client_avatar && <span style={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>{initials}</span>}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.client_name || "—"}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "2px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "10px", color: "#888" }}>
+                      {r.dietitian_name || "—"}
+                    </span>
+                    <span style={{ fontSize: "10px", color: "#ccc" }}>·</span>
+                    <span style={{ fontSize: "10px", color: "#888" }}>
+                      {r.appointment_date ? new Date(r.appointment_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—"}
+                      {r.slot ? ` · ${r.slot}` : ""}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px", flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: "10px", fontWeight: 700, color: ss.color,
+                    background: ss.bg, borderRadius: "6px", padding: "2px 8px",
+                  }}>
+                    {r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : "—"}
+                  </span>
+                  {r.amount != null && (
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#16a34a" }}>
+                      ₹{Number(r.amount).toLocaleString("en-IN")}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ── Recent Dietitian Registrations — paid only ────────────────────────────────
+function RecentRegistrations({ dateRange }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const dp = dateRange?.from && dateRange?.to ? `&from=${dateRange.from}&to=${dateRange.to}` : "";
+    API.apiGet("dashboardRecentRegistrations", `?limit=5${dp}`)
+      .then(res => setItems(res?.data?.data?.registrations || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [dateRange]);
+
+  return (
+    <Card>
+      <SectionHeader title="Recent Dietitian Registrations" actionLabel="View All"
+        action={() => window.location.href = "/dashboard/dietitian-requests"} />
+
+      {loading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", border: "1px solid #f0f4f1" }}>
+              <Skeleton w="34px" h="34px" radius="50%" />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Skeleton w="60%" h="13px" />
+                <Skeleton w="40%" h="11px" />
+              </div>
+              <Skeleton w="60px" h="22px" radius="6px" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "30px 0", color: "#aaa" }}>
+          <LuUserPlus size={32} style={{ marginBottom: "8px", opacity: 0.4 }} />
+          <p style={{ margin: 0, fontSize: "13px" }}>No paid registrations found</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {items.map((r) => {
+            const initials = (r.name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+            return (
+              <div key={r.id} style={{
+                display: "flex", alignItems: "center", gap: "11px",
+                padding: "10px 12px", borderRadius: "10px",
+                border: "1px solid #f0f4f1", background: "#fafcfa",
+              }}>
+                <div style={{
+                  width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+                  background: "linear-gradient(135deg,#7c3aed,#a78bfa)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>{initials}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.name || "—"}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "2px" }}>
+                    <span style={{ fontSize: "10px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {r.email || "—"}
+                    </span>
+                    {r.phone && <><span style={{ fontSize: "10px", color: "#ccc" }}>·</span><span style={{ fontSize: "10px", color: "#888" }}>{r.phone}</span></>}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px", flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: "10px", fontWeight: 700, color: "#7c3aed",
+                    background: "#f3e8ff", borderRadius: "6px", padding: "2px 8px",
+                  }}>Paid</span>
+                  {r.amount != null && (
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#16a34a" }}>
+                      ₹{Number(r.amount).toLocaleString("en-IN")}
+                    </span>
+                  )}
                 </div>
               </div>
             );

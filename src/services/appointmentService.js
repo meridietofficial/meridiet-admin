@@ -9,6 +9,7 @@ const appointmentService = {
   paymentHistory:        (params) => axiosInstance.get(`${BASE}/payment-history?${params}`),
   approvePayment:        (id)     => axiosInstance.post(`${BASE}/${id}/approve-payment`),
   noShowQueue:           (params) => axiosInstance.get(`${BASE}/no-show-queue?${params}`),
+  markComplete:          (id)       => axiosInstance.post(`${BASE}/${id}/mark-complete`),
   markNoShow:            (id, body) => axiosInstance.post(`${BASE}/${id}/mark-no-show`, body),
   pendingNoShowApproval: (params) => axiosInstance.get(`${BASE}/pending-no-show-approval?${params}`),
   approveNoShow:         (id)     => axiosInstance.post(`${BASE}/${id}/approve-no-show`),
