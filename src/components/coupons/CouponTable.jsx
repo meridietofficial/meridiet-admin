@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Table, Modal, Button, Form } from "react-bootstrap";
 import { FaChevronDown, FaFilter, FaPlus, FaEye, FaEdit, FaPercent, FaRupeeSign, FaCalendarAlt, FaInfinity, FaUserAlt } from "react-icons/fa";
 import { MdBlock, MdCheckCircle, MdClose, MdLocalOffer, MdStar } from "react-icons/md";
-import { LuTicket, LuCalendarClock, LuShoppingBag, LuStethoscope, LuLayoutGrid } from "react-icons/lu";
+import { LuTicket, LuCalendarClock, LuShoppingBag, LuStethoscope, LuLayoutGrid, LuGraduationCap } from "react-icons/lu";
 import GlobalPagination from "../common/GlobalPagination";
 import couponService from "../../services/couponService";
 import toast from "react-hot-toast";
@@ -142,7 +142,7 @@ function CouponPreviewCard({ formData }) {
           <p style={{ margin: 0, fontSize: "10px", opacity: 0.7, marginTop: "4px" }}>Max ₹{formData.max_discount_amount} off</p>
         )}
         <p style={{ margin: 0, fontSize: "10px", opacity: 0.65, marginTop: "6px", textTransform: "capitalize" }}>
-          {formData.applicable_on === "both" ? "Diet Plan + Appointment" : formData.applicable_on?.replace("_", " ")}
+          {formData.applicable_on === "both" ? "Diet Plan + Appointment" : formData.applicable_on === "course" ? "Course" : formData.applicable_on?.replace("_", " ")}
         </p>
         {formData.valid_until && (
           <p style={{ margin: 0, fontSize: "10px", opacity: 0.6, marginTop: "2px" }}>
@@ -738,10 +738,12 @@ export default function CouponTable({ onStatsChange }) {
               <Section title="Applicable On" icon="🎯">
                 <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "20px", alignItems: "start" }}>
                   <div style={{ display: "flex", gap: "12px" }}>
-                    <ApplicableCard value="diet_plan" current={formData.applicable_on} onChange={(v) => setField("applicable_on", v)} icon={<LuShoppingBag size={22} />} label={"Diet\nPlan"} />
-                    <ApplicableCard value="appointment" current={formData.applicable_on} onChange={(v) => setField("applicable_on", v)} icon={<LuStethoscope size={22} />} label={"Appointment"} />
-                    <ApplicableCard value="both" current={formData.applicable_on} onChange={(v) => setField("applicable_on", v)} icon={<LuLayoutGrid size={22} />} label={"Both"} />
+                    <ApplicableCard value="diet_plan" current={formData.applicable_on} onChange={(v) => { setField("applicable_on", v); }} icon={<LuShoppingBag size={22} />} label={"Diet\nPlan"} />
+                    <ApplicableCard value="appointment" current={formData.applicable_on} onChange={(v) => { setField("applicable_on", v); }} icon={<LuStethoscope size={22} />} label={"Appointment"} />
+                    <ApplicableCard value="both" current={formData.applicable_on} onChange={(v) => { setField("applicable_on", v); }} icon={<LuLayoutGrid size={22} />} label={"Both"} />
+                    <ApplicableCard value="course" current={formData.applicable_on} onChange={(v) => { setField("applicable_on", v); setField("applicable_plans", []); }} icon={<LuGraduationCap size={22} />} label={"Course"} />
                   </div>
+                  {formData.applicable_on !== "course" && (
                   <div>
                     <FieldLabel label="Restrict to Specific Plans" hint="leave unselected = all plans" />
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -764,6 +766,7 @@ export default function CouponTable({ onStatsChange }) {
                       })}
                     </div>
                   </div>
+                  )}
                 </div>
               </Section>
             </div>
@@ -989,10 +992,10 @@ export default function CouponTable({ onStatsChange }) {
                         <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
                           <span style={{
                             fontSize: "11px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px",
-                            background: u.applicable_type === "diet_plan" ? "#eff6ff" : "#fdf4ff",
-                            color: u.applicable_type === "diet_plan" ? "#2563eb" : "#9333ea",
+                            background: u.applicable_type === "diet_plan" ? "#eff6ff" : u.applicable_type === "course" ? "#f0fdf4" : "#fdf4ff",
+                            color: u.applicable_type === "diet_plan" ? "#2563eb" : u.applicable_type === "course" ? "#15803d" : "#9333ea",
                           }}>
-                            {u.applicable_type === "diet_plan" ? "Diet Plan" : "Appointment"}
+                            {u.applicable_type === "diet_plan" ? "Diet Plan" : u.applicable_type === "course" ? "Course" : "Appointment"}
                           </span>
                         </td>
                         <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
@@ -1001,7 +1004,9 @@ export default function CouponTable({ onStatsChange }) {
                           <p style={{ margin: 0, fontSize: "13px", color: "#111827", fontWeight: 800 }}>₹{u.final_amount}</p>
                         </td>
                         <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
-                          {u.applicable_type === "diet_plan" ? (
+                          {u.applicable_type === "course" ? (
+                            <span style={{ fontSize: "12px", color: "#6b7280" }}>Course Enrollment</span>
+                          ) : u.applicable_type === "diet_plan" ? (
                             <>
                               {u.payment_plan && (
                                 <span style={{ fontSize: "11px", fontWeight: 700, background: "#f0fdf4", color: "#15803d", padding: "2px 8px", borderRadius: "20px" }}>
