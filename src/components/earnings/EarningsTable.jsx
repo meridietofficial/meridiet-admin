@@ -269,8 +269,8 @@ export default function EarningsTable() {
     if (mode === "courses") return (
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "24px" }}>
         <SummaryCard label="Total Revenue" value={fmt(summary.total_revenue)} color="#7c3aed" />
-        <SummaryCard label="Paid" value={summary.paid_count ?? "—"} color="#16a34a" sub="enrollments" />
-        <SummaryCard label="Pending" value={summary.pending_count ?? "—"} color="#d97706" sub="enrollments" />
+        <SummaryCard label="Paid (Full)" value={summary.paid_count ?? "—"} color="#16a34a" sub="enrollments" />
+        <SummaryCard label="EMI Partial" value={summary.pending_count ?? "—"} color="#2563eb" sub="enrollments" />
         <SummaryCard label="Failed" value={summary.failed_count ?? "—"} color="#ef4444" sub="enrollments" />
       </div>
     );
@@ -294,7 +294,7 @@ export default function EarningsTable() {
       { label: "Date" },
     ].map((c) => <TH key={c.label} style={c.style}>{c.label}</TH>);
     if (mode === "registrations") return ["S.No", "Dietitian", "Phone", "Amount", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
-    if (mode === "courses") return ["S.No", "Name", "Email", "Phone", "Course Fee", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
+    if (mode === "courses") return ["S.No", "Name", "Email", "Phone", "Amount Paid", "Plan", "Status", "Order ID", "Payment ID", "Verified At", "Date"].map((c) => <TH key={c}>{c}</TH>);
     return null;
   };
 
@@ -390,7 +390,19 @@ export default function EarningsTable() {
         <TD style={{ fontWeight: 600, fontSize: "13px", color: "#111827" }}>{t.name || "—"}</TD>
         <TD style={{ fontSize: "12px", color: "#6b7280" }}>{t.email || "—"}</TD>
         <TD style={{ fontSize: "12px", color: "#6b7280" }}>{t.phone || "—"}</TD>
-        <TD style={{ fontWeight: 800, color: "#7c3aed", fontSize: "14px" }}>{fmt(t.course_fee)}</TD>
+        <TD style={{ fontWeight: 800, color: "#7c3aed", fontSize: "14px" }}>
+          {fmt(t.amount_paid ?? t.course_fee)}
+        </TD>
+        <TD>
+          {t.payment_plan === "emi"
+            ? <span style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>
+                EMI {t.emi_installments_paid}/3
+              </span>
+            : <span style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>
+                Full
+              </span>
+          }
+        </TD>
         <TD><StatusBadge status={t.payment_status} /></TD>
         <TD style={{ fontFamily: "monospace", fontSize: "11px", color: "#6b7280" }}>{t.razorpay_order_id || "—"}</TD>
         <TD style={{ fontFamily: "monospace", fontSize: "11px", color: "#6b7280" }}>{t.razorpay_payment_id || "—"}</TD>

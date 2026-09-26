@@ -628,6 +628,8 @@ function GoalSettings() {
       calorie_min_offset,
       calorie_max_offset,
       protein_per_kg,
+      protein_per_kg_male,
+      protein_per_kg_female,
       label,
       description,
       is_active,
@@ -637,6 +639,8 @@ function GoalSettings() {
         calorie_min_offset: parseInt(calorie_min_offset),
         calorie_max_offset: parseInt(calorie_max_offset),
         protein_per_kg: parseFloat(protein_per_kg),
+        protein_per_kg_male:   protein_per_kg_male   !== "" ? parseFloat(protein_per_kg_male)   : null,
+        protein_per_kg_female: protein_per_kg_female !== "" ? parseFloat(protein_per_kg_female) : null,
         label,
         description,
         is_active,
@@ -661,7 +665,7 @@ function GoalSettings() {
       ) : (
         <TableWrap>
           <TableHeader
-            cols={["#", "Label", "Cal Min Offset", "Cal Max Offset", "Protein/kg", "Active", "Actions"]}
+            cols={["#", "Label", "Cal Min", "Cal Max", "Protein (fallback)", "Protein ♂ Male", "Protein ♀ Female", "Active", "Actions"]}
           />
           <tbody>
             {data.map((item, i) => (
@@ -670,7 +674,21 @@ function GoalSettings() {
                 <Td style={{ fontWeight: 600 }}>{item.label}</Td>
                 <Td>{item.calorie_min_offset ?? "—"}</Td>
                 <Td>{item.calorie_max_offset ?? "—"}</Td>
-                <Td>{item.protein_per_kg ?? "—"}</Td>
+                <Td>
+                  <span style={{ background: "#f8fafc", color: "#64748b", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 600 }}>
+                    {item.protein_per_kg ?? "—"} g/kg
+                  </span>
+                </Td>
+                <Td>
+                  <span style={{ background: "#eff6ff", color: "#3b82f6", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 700 }}>
+                    {item.protein_per_kg_male != null ? `${item.protein_per_kg_male} g/kg` : "—"}
+                  </span>
+                </Td>
+                <Td>
+                  <span style={{ background: "#fdf4ff", color: "#a855f7", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 700 }}>
+                    {item.protein_per_kg_female != null ? `${item.protein_per_kg_female} g/kg` : "—"}
+                  </span>
+                </Td>
                 <Td>
                   <ActiveBadge value={item.is_active} />
                 </Td>
@@ -680,7 +698,7 @@ function GoalSettings() {
                     color="#3b82f6"
                     bg="#EFF6FF"
                     title="Edit"
-                    onClick={() => setEditItem({ ...item })}
+                    onClick={() => setEditItem({ ...item, protein_per_kg_male: item.protein_per_kg_male ?? "", protein_per_kg_female: item.protein_per_kg_female ?? "" })}
                   />
                 </Td>
               </tr>
@@ -731,17 +749,48 @@ function GoalSettings() {
                   </Form.Group>
                 </div>
               </div>
-              <Form.Group className="mb-3">
-                <Form.Label style={{ fontWeight: 600, fontSize: "13px" }}>
-                  Protein per kg (g)
-                </Form.Label>
-                <Form.Control
-                  type="number"
-                  step="0.1"
-                  value={editItem.protein_per_kg}
-                  onChange={(e) => setEditItem({ ...editItem, protein_per_kg: e.target.value })}
-                />
-              </Form.Group>
+              <div className="row">
+                <div className="col-4">
+                  <Form.Group className="mb-3">
+                    <Form.Label style={{ fontWeight: 600, fontSize: "13px" }}>
+                      Protein/kg <small style={{ color: "#aaa" }}>(fallback)</small>
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      step="0.05"
+                      value={editItem.protein_per_kg}
+                      onChange={(e) => setEditItem({ ...editItem, protein_per_kg: e.target.value })}
+                    />
+                    <Form.Text className="text-muted">Used when gender is other/unknown</Form.Text>
+                  </Form.Group>
+                </div>
+                <div className="col-4">
+                  <Form.Group className="mb-3">
+                    <Form.Label style={{ fontWeight: 600, fontSize: "13px", color: "#3b82f6" }}>
+                      ♂ Male (g/kg)
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      step="0.05"
+                      value={editItem.protein_per_kg_male ?? ""}
+                      onChange={(e) => setEditItem({ ...editItem, protein_per_kg_male: e.target.value })}
+                    />
+                  </Form.Group>
+                </div>
+                <div className="col-4">
+                  <Form.Group className="mb-3">
+                    <Form.Label style={{ fontWeight: 600, fontSize: "13px", color: "#a855f7" }}>
+                      ♀ Female (g/kg)
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      step="0.05"
+                      value={editItem.protein_per_kg_female ?? ""}
+                      onChange={(e) => setEditItem({ ...editItem, protein_per_kg_female: e.target.value })}
+                    />
+                  </Form.Group>
+                </div>
+              </div>
               <Form.Group className="mb-3">
                 <Form.Label style={{ fontWeight: 600, fontSize: "13px" }}>Description</Form.Label>
                 <Form.Control
