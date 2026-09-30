@@ -27,6 +27,7 @@ const apiKeys = {
   dashboardAppointmentStats: "admin/dashboard-appointment-stats",
   dashboardRecentAppointments: "admin/dashboard-recent-appointments",
   dashboardRecentRegistrations: "admin/dashboard-recent-registrations",
+  dashboardExport: "admin/dashboard-export",
   systemOverview: "admin/system-overview",
 
   //user management

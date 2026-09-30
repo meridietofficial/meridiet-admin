@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { LuCalendar, LuChevronDown, LuCheck } from "react-icons/lu";
+import { LuCalendar, LuChevronDown, LuCheck, LuDownload } from "react-icons/lu";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart,
@@ -10,6 +10,7 @@ import {
   LuActivity, LuServer, LuDatabase, LuHeadphones,
   LuSalad, LuClock, LuClipboardList, LuCalendar as LuCalendarIcon, LuUserPlus,
 } from "react-icons/lu";
+import ExcelJS from "exceljs";
 import API from "../../helpers/api";
 
 // ── Auto-derive grouping period from date range ───────────────────────────────
@@ -192,6 +193,112 @@ const Dashboard = () => {
 
   const [systemData, setSystemData] = useState(null);
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!dateRange?.from || !dateRange?.to) return;
+    setExporting(true);
+    try {
+      const res = await API.apiGet("dashboardExport", `?from=${dateRange.from}&to=${dateRange.to}`);
+      const rows = res?.data?.data?.rows || [];
+
+      const totalAppt  = rows.reduce((s, r) => s + Number(r.appointment_consultation), 0);
+      const totalPlan  = rows.reduce((s, r) => s + Number(r.diet_plan), 0);
+      const totalReg   = rows.reduce((s, r) => s + Number(r.dietitian_registration), 0);
+      const grandTotal = totalAppt + totalPlan + totalReg;
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "MeriDiet Admin";
+      const ws = wb.addWorksheet("Revenue Breakdown");
+
+      ws.columns = [
+        { header: "Date",                              key: "date",  width: 16 },
+        { header: "Appointment / Consultation (Rs)",   key: "appt",  width: 36 },
+        { header: "Diet Plan (Rs)",                    key: "plan",  width: 20 },
+        { header: "Dietitian Registration (Rs)",       key: "reg",   width: 30 },
+        { header: "Grand Total (Rs)",                  key: "total", width: 20 },
+      ];
+
+      // Style the header row — dark green background, white bold text
+      const headerRow = ws.getRow(1);
+      headerRow.eachCell(cell => {
+        cell.fill   = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E8E3E" } };
+        cell.font   = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FF14652C" } },
+          bottom: { style: "thin", color: { argb: "FF14652C" } },
+          left: { style: "thin", color: { argb: "FF14652C" } },
+          right: { style: "thin", color: { argb: "FF14652C" } },
+        };
+      });
+      headerRow.height = 22;
+
+      // Data rows — alternating light green / white
+      rows.forEach((r, idx) => {
+        const [y, m, d] = r.date.split("-");
+        const appt  = Number(r.appointment_consultation);
+        const plan  = Number(r.diet_plan);
+        const reg   = Number(r.dietitian_registration);
+        const rowTotal = appt + plan + reg;
+
+        const dataRow = ws.addRow([`${d}-${m}-${y}`, appt, plan, reg, rowTotal]);
+        const bgColor = idx % 2 === 0 ? "FFF4FBF6" : "FFFFFFFF";
+        dataRow.eachCell(cell => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          cell.border = {
+            top:    { style: "hair", color: { argb: "FFD4E6D9" } },
+            bottom: { style: "hair", color: { argb: "FFD4E6D9" } },
+            left:   { style: "hair", color: { argb: "FFD4E6D9" } },
+            right:  { style: "hair", color: { argb: "FFD4E6D9" } },
+          };
+        });
+        // Highlight Grand Total column per row
+        dataRow.getCell(5).font = { bold: true, color: { argb: "FF1E8E3E" } };
+      });
+
+      // Empty spacer row
+      ws.addRow([]);
+
+      // TOTAL row — orange/amber background, bold white text
+      const totalRow = ws.addRow(["TOTAL", totalAppt, totalPlan, totalReg, grandTotal]);
+      totalRow.eachCell(cell => {
+        cell.fill   = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF97316" } };
+        cell.font   = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.border = {
+          top:    { style: "medium", color: { argb: "FFE06010" } },
+          bottom: { style: "medium", color: { argb: "FFE06010" } },
+          left:   { style: "medium", color: { argb: "FFE06010" } },
+          right:  { style: "medium", color: { argb: "FFE06010" } },
+        };
+      });
+      // Grand total cell gets a slightly different shade
+      totalRow.getCell(5).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDC6309" } };
+      totalRow.height = 22;
+
+      // Download
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `MeriDiet_Revenue_${dateRange.from}_to_${dateRange.to}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Export failed: " + (err?.response?.data?.message || err?.message || "Unknown error"));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const buildDateParams = (range) => {
     const p = range?.from && range?.to ? `&from=${range.from}&to=${range.to}` : "";
     return p;
@@ -318,7 +425,26 @@ const Dashboard = () => {
           </div>
           <p style={{ color: "#999", marginBottom: 0, paddingLeft: "14px", fontSize: "13px" }}>Welcome back — here's what's happening today.</p>
         </div>
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            style={{
+              display: "flex", alignItems: "center", gap: "7px",
+              padding: "8px 14px", borderRadius: "10px",
+              border: "1px solid #d4e6d9", background: exporting ? "#f0f7f2" : "#1E8E3E",
+              cursor: exporting ? "not-allowed" : "pointer",
+              fontSize: "13px", fontWeight: 600,
+              color: exporting ? "#1E8E3E" : "#fff",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+              transition: "background 0.2s",
+            }}
+          >
+            <LuDownload size={14} color={exporting ? "#1E8E3E" : "#fff"} />
+            {exporting ? "Exporting…" : "Export Excel"}
+          </button>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+        </div>
       </div>
 
       {/* ── Stat Cards ── */}
