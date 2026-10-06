@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Table, Modal, Button } from "react-bootstrap";
-import { FaEye, FaSearch, FaTimes, FaVideo, FaMapMarkerAlt, FaStar, FaPhone, FaEnvelope, FaFilter, FaBan, FaCheck } from "react-icons/fa";
+import { FaEye, FaSearch, FaTimes, FaVideo, FaMapMarkerAlt, FaStar, FaPhone, FaEnvelope, FaFilter, FaBan, FaCheck, FaPlus } from "react-icons/fa";
 import { LuCalendarDays, LuClock, LuStethoscope, LuChevronDown, LuX, LuSalad } from "react-icons/lu";
 import { MdPayment } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
 import appointmentService from "../../services/appointmentService";
+import axiosInstance from "../../helpers/api/instance";
 import toast from "react-hot-toast";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,6 +83,13 @@ function SourceBadge({ source }) {
   return (
     <span style={{ background: ns ? "#fff7ed" : "#f0fdf4", color: ns ? "#c2410c" : "#16a34a", border: `1px solid ${ns ? "#fed7aa" : "#bbf7d0"}`, borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>
       {ns ? "No-Show" : "Completed"}
+    </span>
+  );
+}
+function AdminBadge() {
+  return (
+    <span style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "20px", padding: "2px 8px", fontSize: "10px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+      <FaCheck size={8} /> Admin Booked
     </span>
   );
 }
@@ -273,6 +281,13 @@ const PAYMENT_OPTIONS = [
   { value: "refunded", label: "Refunded", dot: "#7c3aed" },
 ];
 
+const SOURCE_OPTIONS = [
+  { value: "",           label: "All Bookings" },
+  { value: "admin",      label: "Admin Booked",    dot: "#2563eb" },
+  { value: "platform",   label: "Website Booked",  dot: "#16a34a" },
+  { value: "dietitian",  label: "Dietitian Booked", dot: "#d97706" },
+];
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
@@ -305,6 +320,7 @@ export default function AppointmentTable() {
   const [allSearchInput, setAllSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const allTimer = useRef(null);
@@ -348,6 +364,98 @@ export default function AppointmentTable() {
   const [approveNoShowAppt, setApproveNoShowAppt] = useState(null);
   const [approvingNoShow, setApprovingNoShow] = useState(false);
 
+  // Book Appointment modal
+  const [showBookModal, setShowBookModal] = useState(false);
+  const [bookingAppt, setBookingAppt] = useState(false);
+  const [bookForm, setBookForm] = useState({ session_type: "video_call", duration: "30", notes: "" });
+
+  const [userQuery, setUserQuery]           = useState("");
+  const [userResults, setUserResults]       = useState([]);
+  const [userLoading, setUserLoading]       = useState(false);
+  const [selectedUser, setSelectedUser]     = useState(null);
+  const [showUserDD, setShowUserDD]         = useState(false);
+
+  const [dietQuery, setDietQuery]           = useState("");
+  const [dietResults, setDietResults]       = useState([]);
+  const [dietLoading, setDietLoading]       = useState(false);
+  const [selectedDiet, setSelectedDiet]     = useState(null);
+  const [showDietDD, setShowDietDD]         = useState(false);
+
+  // Date + slot state (driven by dietitian availability)
+  const [slotsData, setSlotsData]       = useState([]);   // [{ date, day, slots: ["09:00", ...] }]
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState("");
+
+  const userSearchRef = useRef(null);
+  const dietSearchRef = useRef(null);
+  const userTimer     = useRef(null);
+  const dietTimer     = useRef(null);
+
+  const resetBookModal = () => {
+    setBookForm({ session_type: "video_call", duration: "30", notes: "" });
+    setUserQuery(""); setUserResults([]); setSelectedUser(null); setShowUserDD(false);
+    setDietQuery(""); setDietResults([]); setSelectedDiet(null); setShowDietDD(false);
+    setSlotsData([]); setSelectedDate(""); setSelectedSlot("");
+  };
+
+  // Fetch available slots when dietitian changes
+  useEffect(() => {
+    if (!selectedDiet) { setSlotsData([]); setSelectedDate(""); setSelectedSlot(""); return; }
+    setSlotsLoading(true);
+    axiosInstance.get(`appointments/slots/${selectedDiet.id}?days=30`)
+      .then((r) => {
+        const data = r?.data?.data || [];
+        setSlotsData(data);
+        setSelectedDate(data.length > 0 ? data[0].date : "");
+        setSelectedSlot("");
+      })
+      .catch(() => { setSlotsData([]); setSelectedDate(""); setSelectedSlot(""); })
+      .finally(() => setSlotsLoading(false));
+  }, [selectedDiet]);
+
+  const searchUsers = useCallback((q) => {
+    if (!q.trim()) { setUserResults([]); return; }
+    setUserLoading(true);
+    axiosInstance.get(`admin/existing-users?search=${encodeURIComponent(q)}&limit=10`)
+      .then((r) => setUserResults(r?.data?.data || []))
+      .catch(() => setUserResults([]))
+      .finally(() => setUserLoading(false));
+  }, []);
+
+  const searchDietitians = useCallback((q) => {
+    if (!q.trim()) { setDietResults([]); return; }
+    setDietLoading(true);
+    axiosInstance.get(`admin/dietitians?search=${encodeURIComponent(q)}&limit=10`)
+      .then((r) => setDietResults(r?.data?.data || []))
+      .catch(() => setDietResults([]))
+      .finally(() => setDietLoading(false));
+  }, []);
+
+  const handleBookSubmit = () => {
+    if (!selectedDiet)  return toast.error("Please select a dietitian.");
+    if (!selectedDate)  return toast.error("Please select a date.");
+    if (!selectedSlot)  return toast.error("Please select a time slot.");
+    setBookingAppt(true);
+    appointmentService.bookAppointment({
+      user_id:          selectedUser?.id || null,
+      dietitian_id:     selectedDiet.id,
+      appointment_date: selectedDate,
+      slot:             selectedSlot,
+      session_type:     bookForm.session_type,
+      duration:         Number(bookForm.duration) || 30,
+      notes:            bookForm.notes || null,
+    })
+      .then(() => {
+        toast.success("Appointment booked successfully!");
+        setShowBookModal(false);
+        resetBookModal();
+        setRefreshKey((k) => k + 1);
+      })
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to book appointment."))
+      .finally(() => setBookingAppt(false));
+  };
+
   // Reset list on view/action-type change
   useEffect(() => {
     setAppointments([]);
@@ -386,6 +494,7 @@ export default function AppointmentTable() {
     const p = new URLSearchParams({ page: allPage, limit: 20 });
     if (statusFilter)  p.append("status", statusFilter);
     if (paymentFilter) p.append("payment_status", paymentFilter);
+    if (sourceFilter)  p.append("source", sourceFilter);
     if (dateFrom)      p.append("date_from", dateFrom);
     if (dateTo)        p.append("date_to", dateTo);
     if (allSearch)     p.append("search", allSearch);
@@ -397,7 +506,7 @@ export default function AppointmentTable() {
       })
       .catch((err) => toast.error(err?.response?.data?.message || "Failed to load appointments."))
       .finally(() => setLoading(false));
-  }, [activeView, allPage, statusFilter, paymentFilter, dateFrom, dateTo, allSearch, refreshKey]);
+  }, [activeView, allPage, statusFilter, paymentFilter, sourceFilter, dateFrom, dateTo, allSearch, refreshKey]);
 
   // ── Fetch: Payment History ──────────────────────────────────────────────────
   useEffect(() => {
@@ -487,15 +596,35 @@ export default function AppointmentTable() {
     phTimer.current = setTimeout(() => { setPhSearch(val); setPhPage(1); }, 500);
   };
 
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const h = (e) => { if (userSearchRef.current && !userSearchRef.current.contains(e.target)) setShowUserDD(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+  useEffect(() => {
+    const h = (e) => { if (dietSearchRef.current && !dietSearchRef.current.contains(e.target)) setShowDietDD(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
   const clearAllFilters = () => {
-    setStatusFilter(""); setPaymentFilter("");
+    setStatusFilter(""); setPaymentFilter(""); setSourceFilter("");
     setDateFrom(""); setDateTo(""); setAllSearch(""); setAllSearchInput(""); setAllPage(1);
   };
   const clearPhFilters = () => {
     setPhSearch(""); setPhSearchInput(""); setPhDietitianId(""); setPhDateFrom(""); setPhDateTo(""); setPhPage(1);
   };
-  const hasAllFilters = statusFilter || paymentFilter || dateFrom || dateTo || allSearch;
+  const hasAllFilters = statusFilter || paymentFilter || sourceFilter || dateFrom || dateTo || allSearch;
   const hasPhFilters  = phSearch || phDietitianId || phDateFrom || phDateTo;
+
+  // ── Shared style constants for Book Appointment modal ─────────────────────
+  const labelStyle    = { display: "block", fontSize: "11.5px", fontWeight: 700, color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.4px" };
+  const selectedChipStyle = { display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", border: "1px solid #bbf7d0", borderRadius: "10px", background: "#f0fdf4" };
+  const searchInputStyle  = { width: "100%", height: "40px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "0 12px 0 32px", fontSize: "13px", outline: "none" };
+  const ddStyle       = { position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: "10px", zIndex: 2000, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", maxHeight: "200px", overflowY: "auto" };
+  const ddItemStyle   = { padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f3f4f6", fontSize: "13px" };
+  const ddLoadingStyle = { padding: "12px", textAlign: "center", fontSize: "12px", color: "#aaa" };
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  RENDER
@@ -504,17 +633,24 @@ export default function AppointmentTable() {
     <div>
       <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
 
-        {/* ── Main tabs ── */}
-        <div style={{ display: "flex", borderBottom: "2px solid #f0f0f0", marginBottom: "20px", gap: "2px", flexWrap: "wrap" }}>
-          {MAIN_TABS.map((tab) => {
-            const active = activeView === tab.value;
-            return (
-              <button key={tab.value} onClick={() => { setActiveView(tab.value); setSearchParams({ tab: tab.value }); }}
-                style={{ padding: "10px 28px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13.5px", color: active ? tab.color : "#6b7280", borderBottom: `2.5px solid ${active ? tab.color : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-                {tab.label}
-              </button>
-            );
-          })}
+        {/* ── Header row: tabs + Book Appointment button ── */}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", borderBottom: "2px solid #f0f0f0", marginBottom: "20px", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "2px", flexWrap: "wrap" }}>
+            {MAIN_TABS.map((tab) => {
+              const active = activeView === tab.value;
+              return (
+                <button key={tab.value} onClick={() => { setActiveView(tab.value); setSearchParams({ tab: tab.value }); }}
+                  style={{ padding: "10px 28px", border: "none", background: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: "13.5px", color: active ? tab.color : "#6b7280", borderBottom: `2.5px solid ${active ? tab.color : "transparent"}`, marginBottom: "-2px", transition: "all 0.15s", whiteSpace: "nowrap" }}>
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => { resetBookModal(); setShowBookModal(true); }}
+            style={{ marginBottom: "4px", height: "38px", padding: "0 18px", background: "linear-gradient(135deg, #1E8E3E 0%, #166C31 100%)", color: "#fff", border: "none", borderRadius: "10px", fontWeight: 700, fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(30,142,62,0.25)" }}>
+            <FaPlus size={11} /> Book Appointment
+          </button>
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
@@ -762,6 +898,7 @@ export default function AppointmentTable() {
               <SearchBar value={allSearchInput} onChange={handleAllSearch} placeholder="Search patient name, email, phone..." />
               <FilterDropdown value={statusFilter}  onChange={(v) => { setStatusFilter(v);  setAllPage(1); }} options={STATUS_OPTIONS}  placeholder="Status" />
               <FilterDropdown value={paymentFilter} onChange={(v) => { setPaymentFilter(v); setAllPage(1); }} options={PAYMENT_OPTIONS} placeholder="Payment" accent="#16a34a" />
+              <FilterDropdown value={sourceFilter}  onChange={(v) => { setSourceFilter(v);  setAllPage(1); }} options={SOURCE_OPTIONS}  placeholder="Booking Source" accent="#2563eb" />
               <DateRange
                 from={dateFrom} to={dateTo}
                 onFrom={(v) => { setDateFrom(v); setAllPage(1); }}
@@ -792,6 +929,7 @@ export default function AppointmentTable() {
                             <TD>
                               <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
                               <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
+                              {a.appointment_source === "admin" && <div style={{ marginTop: "4px" }}><AdminBadge /></div>}
                             </TD>
                             <TD><DietitianCell d={a.dietitian} /></TD>
                             <TD style={{ whiteSpace: "nowrap" }}>
@@ -1036,11 +1174,17 @@ export default function AppointmentTable() {
                 <div>
                   <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
                     <SectionHeader title="Appointment Info" icon="📋" />
+                    {detail.appointment_source === "admin" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "10px 14px", marginBottom: "12px", fontSize: "12.5px", color: "#1d4ed8", fontWeight: 600 }}>
+                        <FaCheck size={12} color="#2563eb" />
+                        This appointment was booked by an admin (free consultation).
+                      </div>
+                    )}
                     <div className="row g-2">
                       <div className="col-6"><InfoRow label="Date" value={formatDate(detail.appointment_date)} /></div>
                       <div className="col-6"><InfoRow label="Time Slot" value={`${detail.slot} (${detail.duration} min)`} /></div>
                       <div className="col-6"><InfoRow label="Fee" value={`₹${detail.fee} ${detail.currency}`} /></div>
-                      <div className="col-6"><InfoRow label="Follow-up Type" value={detail.follow_up_type || "—"} /></div>
+                      <div className="col-6"><InfoRow label="Booked By" value={detail.appointment_source === "admin" ? "Admin" : detail.appointment_source === "dietitian" ? "Dietitian" : "User (Website)"} /></div>
                       {detail.parent_appointment_id && <div className="col-6"><InfoRow label="Parent Appointment" value={`#${detail.parent_appointment_id}`} /></div>}
                       {detail.payment_id && <div className="col-6"><InfoRow label="Payment ID" value={detail.payment_id} mono /></div>}
                       {detail.order_id && <div className="col-6"><InfoRow label="Order ID" value={detail.order_id} mono /></div>}
@@ -1395,6 +1539,275 @@ export default function AppointmentTable() {
             {approvingNoShow
               ? <><span className="spinner-border spinner-border-sm" role="status" /> Approving...</>
               : <><FaCheck size={12} /> Confirm &amp; Approve</>}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          BOOK APPOINTMENT MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      <Modal show={showBookModal} onHide={() => { setShowBookModal(false); resetBookModal(); }} centered size="lg">
+        <Modal.Header closeButton style={{ borderBottom: "1px solid #f3f4f6", padding: "16px 20px" }}>
+          <Modal.Title style={{ fontWeight: 800, fontSize: "16px", color: "#111827", display: "flex", alignItems: "center", gap: "8px" }}>
+            <FaPlus size={14} color="#1E8E3E" /> Book Appointment
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: "20px", maxHeight: "78vh", overflowY: "auto" }}>
+
+          {/* Info banner */}
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px 14px", marginBottom: "20px", fontSize: "12.5px", color: "#166C31", fontWeight: 600 }}>
+            📋 Use this to book a free consultation for users who purchased the 3-month plan. Fee is ₹0 and confirmed automatically.
+          </div>
+
+          {/* ── Row 1: User + Dietitian ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+
+            {/* User search */}
+            <div style={{ position: "relative" }} ref={userSearchRef}>
+              <label style={labelStyle}>User <span style={{ color: "#9ca3af", fontWeight: 500 }}>(Optional)</span></label>
+              {selectedUser ? (
+                <div style={selectedChipStyle}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{selectedUser.full_name}</p>
+                    <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>{selectedUser.email}</p>
+                  </div>
+                  <FaTimes size={12} color="#6b7280" style={{ cursor: "pointer", flexShrink: 0 }}
+                    onClick={() => { setSelectedUser(null); setUserQuery(""); setUserResults([]); }} />
+                </div>
+              ) : (
+                <>
+                  <div style={{ position: "relative" }}>
+                    <FaSearch style={{ position: "absolute", left: "11px", top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: "11px" }} />
+                    <input value={userQuery}
+                      onChange={(e) => { const v = e.target.value; setUserQuery(v); setShowUserDD(true); clearTimeout(userTimer.current); userTimer.current = setTimeout(() => searchUsers(v), 400); }}
+                      onFocus={() => setShowUserDD(true)}
+                      placeholder="Search by name or email..."
+                      style={searchInputStyle} />
+                  </div>
+                  {showUserDD && (userResults.length > 0 || userLoading) && (
+                    <div style={ddStyle}>
+                      {userLoading
+                        ? <div style={ddLoadingStyle}>Searching...</div>
+                        : userResults.map((u) => (
+                          <div key={u.id} onClick={() => { setSelectedUser(u); setUserQuery(""); setShowUserDD(false); }}
+                            style={ddItemStyle}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#f0fdf4")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
+                            <p style={{ margin: 0, fontWeight: 700, color: "#111827", fontSize: "13px" }}>{u.full_name}</p>
+                            <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>{u.email}</p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Dietitian search */}
+            <div style={{ position: "relative" }} ref={dietSearchRef}>
+              <label style={labelStyle}>Dietitian <span style={{ color: "#ef4444" }}>*</span></label>
+              {selectedDiet ? (
+                <div style={selectedChipStyle}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{selectedDiet.full_name}</p>
+                    <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>{selectedDiet.email}</p>
+                  </div>
+                  <FaTimes size={12} color="#6b7280" style={{ cursor: "pointer", flexShrink: 0 }}
+                    onClick={() => { setSelectedDiet(null); setDietQuery(""); setDietResults([]); }} />
+                </div>
+              ) : (
+                <>
+                  <div style={{ position: "relative" }}>
+                    <FaSearch style={{ position: "absolute", left: "11px", top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: "11px" }} />
+                    <input value={dietQuery}
+                      onChange={(e) => { const v = e.target.value; setDietQuery(v); setShowDietDD(true); clearTimeout(dietTimer.current); dietTimer.current = setTimeout(() => searchDietitians(v), 400); }}
+                      onFocus={() => setShowDietDD(true)}
+                      placeholder="Search by name..."
+                      style={searchInputStyle} />
+                  </div>
+                  {showDietDD && (dietResults.length > 0 || dietLoading) && (
+                    <div style={ddStyle}>
+                      {dietLoading
+                        ? <div style={ddLoadingStyle}>Searching...</div>
+                        : dietResults.map((d) => (
+                          <div key={d.id} onClick={() => { setSelectedDiet(d); setDietQuery(""); setShowDietDD(false); }}
+                            style={ddItemStyle}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#f0fdf4")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
+                            <p style={{ margin: 0, fontWeight: 700, color: "#111827", fontSize: "13px" }}>{d.full_name}</p>
+                            <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>{d.email}</p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+          </div>
+
+          {/* ── Date + Slot picker (shows after dietitian selected) ── */}
+          {selectedDiet && (
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", marginBottom: "20px", background: "#fafcfa" }}>
+              {slotsLoading ? (
+                <div style={{ textAlign: "center", padding: "30px 0" }}>
+                  <div className="spinner-border spinner-border-sm" style={{ color: "#1E8E3E" }} role="status" />
+                  <p style={{ marginTop: "10px", fontSize: "13px", color: "#9ca3af" }}>Loading availability for {selectedDiet.full_name}...</p>
+                </div>
+              ) : slotsData.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "24px 0", color: "#9ca3af", fontSize: "13px" }}>
+                  <LuCalendarDays size={28} style={{ marginBottom: "8px", opacity: 0.4 }} />
+                  <p style={{ margin: 0, fontWeight: 600 }}>No availability set by this dietitian yet.</p>
+                  <p style={{ margin: "4px 0 0", fontSize: "12px" }}>You can still book manually by selecting date &amp; time below.</p>
+                  {/* Manual fallback */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "16px", textAlign: "left" }}>
+                    <div>
+                      <label style={labelStyle}>Date <span style={{ color: "#ef4444" }}>*</span></label>
+                      <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
+                        style={{ width: "100%", height: "40px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "0 12px", fontSize: "13px", outline: "none" }} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Time Slot <span style={{ color: "#ef4444" }}>*</span></label>
+                      <input type="time" value={selectedSlot} onChange={(e) => setSelectedSlot(e.target.value)}
+                        style={{ width: "100%", height: "40px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "0 12px", fontSize: "13px", outline: "none" }} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Date chips */}
+                  <div style={{ marginBottom: "16px" }}>
+                    <p style={{ ...labelStyle, marginBottom: "10px" }}>Select a Date <span style={{ color: "#ef4444" }}>*</span></p>
+                    <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+                      {slotsData.map((d) => {
+                        const active = selectedDate === d.date;
+                        const dateObj = new Date(d.date + "T00:00:00");
+                        const todayISO = new Date().toISOString().slice(0, 10);
+                        const isToday  = d.date === todayISO;
+                        const dayLabel = isToday ? "Today" : d.day.slice(0, 3);
+                        const dateNum  = dateObj.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                        return (
+                          <button key={d.date} type="button"
+                            onClick={() => { setSelectedDate(d.date); setSelectedSlot(""); }}
+                            style={{ flexShrink: 0, padding: "8px 14px", border: `1.5px solid ${active ? "#1E8E3E" : "#e5e7eb"}`, borderRadius: "10px", background: active ? "#1E8E3E" : "#fff", cursor: "pointer", textAlign: "center", minWidth: "68px", transition: "all 0.15s" }}>
+                            <span style={{ display: "block", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: active ? "rgba(255,255,255,0.8)" : "#9ca3af" }}>{dayLabel}</span>
+                            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, marginTop: "2px", color: active ? "#fff" : "#111827" }}>{dateNum}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Time slot grid */}
+                  {selectedDate && (() => {
+                    const dateEntry = slotsData.find((d) => d.date === selectedDate);
+                    const rawSlots  = dateEntry?.slots || [];
+
+                    // Expand range slots ("09:00-18:00") into 30-min individual slots,
+                    // pass through already-individual slots ("09:00") unchanged.
+                    const toMins = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+                    const fmtHHMM = (mins) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+
+                    // Filter out past slots: for today, hide anything before current time
+                    const todayISO = new Date().toISOString().slice(0, 10);
+                    const nowMins  = new Date().getHours() * 60 + new Date().getMinutes();
+                    const isSlotPast = (slot) => {
+                      if (selectedDate < todayISO) return true;
+                      if (selectedDate > todayISO) return false;
+                      return toMins(slot) < nowMins;
+                    };
+
+                    const expandedSlots = rawSlots.flatMap((s) => {
+                      if (!s.includes("-")) return isSlotPast(s) ? [] : [s];
+                      const [start, end] = s.split("-");
+                      const slots = [];
+                      let cur = toMins(start);
+                      const endMins = toMins(end);
+                      while (cur + 30 <= endMins) {
+                        const slotStr = fmtHHMM(cur);
+                        if (!isSlotPast(slotStr)) slots.push(slotStr);
+                        cur += 30;
+                      }
+                      return slots;
+                    });
+
+                    const fmtTime = (t) => {
+                      const [h, m] = t.split(":").map(Number);
+                      return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+                    };
+                    const addMins = (t, mins) => {
+                      const [h, m] = t.split(":").map(Number);
+                      return fmtHHMM(h * 60 + m + mins);
+                    };
+
+                    return (
+                      <div>
+                        <p style={{ ...labelStyle, marginBottom: "10px" }}>Select a Time Slot <span style={{ color: "#ef4444" }}>*</span></p>
+                        {expandedSlots.length === 0 ? (
+                          <p style={{ fontSize: "13px", color: "#9ca3af", margin: 0 }}>No slots available on this date.</p>
+                        ) : (
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(152px, 1fr))", gap: "8px" }}>
+                            {expandedSlots.map((s) => {
+                              const active  = selectedSlot === s;
+                              const endTime = addMins(s, 30);
+                              return (
+                                <button key={s} type="button"
+                                  onClick={() => setSelectedSlot(s)}
+                                  style={{ padding: "10px 8px", border: `1.5px solid ${active ? "#1E8E3E" : "#e5e7eb"}`, borderRadius: "10px", background: active ? "#1E8E3E" : "#fff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}>
+                                  <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: active ? "#fff" : "#111827" }}>{fmtTime(s)} – {fmtTime(endTime)}</span>
+                                  <span style={{ display: "block", fontSize: "10px", fontWeight: 600, marginTop: "3px", color: active ? "rgba(255,255,255,0.85)" : "#16a34a" }}>Available</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── Row 2: Session type + Duration ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+            <div>
+              <label style={labelStyle}>Session Type</label>
+              <select value={bookForm.session_type} onChange={(e) => setBookForm((f) => ({ ...f, session_type: e.target.value }))}
+                style={{ width: "100%", height: "40px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "0 12px", fontSize: "13px", outline: "none", background: "#fff" }}>
+                <option value="video_call">Video Call</option>
+                <option value="in_person">In Person</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Duration (minutes)</label>
+              <select value={bookForm.duration} onChange={(e) => { setBookForm((f) => ({ ...f, duration: e.target.value })); setSelectedSlot(""); }}
+                style={{ width: "100%", height: "40px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "0 12px", fontSize: "13px", outline: "none", background: "#fff" }}>
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">60 min</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label style={labelStyle}>Notes</label>
+            <textarea value={bookForm.notes} onChange={(e) => setBookForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="e.g. Free consultation – 3 Month plan"
+              rows={2}
+              style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "10px 12px", fontSize: "13px", outline: "none", resize: "vertical" }} />
+          </div>
+
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: "1px solid #f3f4f6", padding: "12px 20px", gap: "8px" }}>
+          <Button variant="outline-secondary" onClick={() => { setShowBookModal(false); resetBookModal(); }} disabled={bookingAppt} style={{ borderRadius: "8px", fontWeight: 600, fontSize: "13px" }}>Cancel</Button>
+          <Button onClick={handleBookSubmit} disabled={bookingAppt}
+            style={{ background: "linear-gradient(135deg, #1E8E3E 0%, #166C31 100%)", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
+            {bookingAppt
+              ? <><span className="spinner-border spinner-border-sm" role="status" /> Booking...</>
+              : <><FaCheck size={12} /> Book Appointment</>}
           </Button>
         </Modal.Footer>
       </Modal>

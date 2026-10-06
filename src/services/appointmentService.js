@@ -13,6 +13,7 @@ const appointmentService = {
   markNoShow:            (id, body) => axiosInstance.post(`${BASE}/${id}/mark-no-show`, body),
   pendingNoShowApproval: (params) => axiosInstance.get(`${BASE}/pending-no-show-approval?${params}`),
   approveNoShow:         (id)     => axiosInstance.post(`${BASE}/${id}/approve-no-show`),
+  bookAppointment:       (body)   => axiosInstance.post(`${BASE}/book`, body),
 };
 
 export default appointmentService;
