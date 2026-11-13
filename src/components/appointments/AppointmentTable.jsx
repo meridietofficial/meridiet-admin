@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Table, Modal, Button } from "react-bootstrap";
 import { FaEye, FaSearch, FaTimes, FaVideo, FaMapMarkerAlt, FaStar, FaPhone, FaEnvelope, FaFilter, FaBan, FaCheck, FaPlus } from "react-icons/fa";
-import { LuCalendarDays, LuClock, LuStethoscope, LuChevronDown, LuX, LuSalad } from "react-icons/lu";
+import { LuCalendarDays, LuClock, LuStethoscope, LuChevronDown, LuX, LuSalad, LuCalendarCheck } from "react-icons/lu";
 import { MdPayment } from "react-icons/md";
 import GlobalPagination from "../common/GlobalPagination";
 import appointmentService from "../../services/appointmentService";
@@ -90,6 +90,21 @@ function AdminBadge() {
   return (
     <span style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "20px", padding: "2px 8px", fontSize: "10px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
       <FaCheck size={8} /> Admin Booked
+    </span>
+  );
+}
+function DietitianBookedBadge() {
+  return (
+    <span style={{ background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a", borderRadius: "20px", padding: "2px 8px", fontSize: "10px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+      <LuStethoscope size={8} /> Dietitian Booked
+    </span>
+  );
+}
+function RescheduledBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span style={{ background: "#fdf4ff", color: "#7c3aed", border: "1px solid #e9d5ff", borderRadius: "20px", padding: "2px 8px", fontSize: "10px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+      🔄 Rescheduled{count > 1 ? ` ×${count}` : ""}
     </span>
   );
 }
@@ -184,8 +199,8 @@ function StarRating({ value }) {
     </div>
   );
 }
-function TH({ children }) {
-  return <th style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "13px", padding: "14px 16px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px" }}>{children}</th>;
+function TH({ children, width, center }) {
+  return <th style={{ background: "#1E8E3E", color: "#fff", fontWeight: 600, fontSize: "13px", padding: "12px 14px", whiteSpace: "nowrap", borderBottom: "2px solid #166C31", letterSpacing: "0.3px", width: width || "auto", textAlign: center ? "center" : "left" }}>{children}</th>;
 }
 function TD({ children, style }) {
   return <td style={{ padding: "12px 16px", verticalAlign: "middle", ...style }}>{children}</td>;
@@ -352,6 +367,41 @@ export default function AppointmentTable() {
       .finally(() => setMarkingComplete(false));
   };
 
+  const openRescheduleModal = () => {
+    if (!detail?.dietitian?.id) return;
+    setRescheduleDate(""); setRescheduleSlot(""); setRescheduleReason("");
+    setRescheduleSlotsData([]);
+    setShowRescheduleModal(true);
+    setRescheduleSlotsLoading(true);
+    axiosInstance.get(`appointments/slots/${detail.dietitian.id}?days=30`)
+      .then((r) => {
+        const data = r?.data?.data || [];
+        setRescheduleSlotsData(data);
+        setRescheduleDate(data.length > 0 ? data[0].date : "");
+      })
+      .catch(() => setRescheduleSlotsData([]))
+      .finally(() => setRescheduleSlotsLoading(false));
+  };
+
+  const handleRescheduleSubmit = () => {
+    if (!rescheduleDate) return toast.error("Please select a date.");
+    if (!rescheduleSlot) return toast.error("Please select a time slot.");
+    setSubmittingReschedule(true);
+    appointmentService.reschedule(detail.id, {
+      appointment_date: rescheduleDate,
+      slot: rescheduleSlot,
+      reason: rescheduleReason.trim() || undefined,
+    })
+      .then(() => {
+        toast.success("Appointment rescheduled successfully!");
+        setShowRescheduleModal(false);
+        refreshDetail(detail.id);
+        setRefreshKey((k) => k + 1);
+      })
+      .catch((err) => toast.error(err?.response?.data?.message || "Failed to reschedule."))
+      .finally(() => setSubmittingReschedule(false));
+  };
+
   // Mark No-Show modal
   const [showMarkNoShowModal, setShowMarkNoShowModal] = useState(false);
   const [markNoShowAppt, setMarkNoShowAppt] = useState(null);
@@ -391,6 +441,15 @@ export default function AppointmentTable() {
   const dietSearchRef = useRef(null);
   const userTimer     = useRef(null);
   const dietTimer     = useRef(null);
+
+  // Reschedule modal
+  const [showRescheduleModal, setShowRescheduleModal]     = useState(false);
+  const [rescheduleSlotsData, setRescheduleSlotsData]     = useState([]);
+  const [rescheduleSlotsLoading, setRescheduleSlotsLoading] = useState(false);
+  const [rescheduleDate, setRescheduleDate]               = useState("");
+  const [rescheduleSlot, setRescheduleSlot]               = useState("");
+  const [rescheduleReason, setRescheduleReason]           = useState("");
+  const [submittingReschedule, setSubmittingReschedule]   = useState(false);
 
   const resetBookModal = () => {
     setBookForm({ session_type: "video_call", duration: "30", notes: "" });
@@ -895,7 +954,7 @@ export default function AppointmentTable() {
           <>
             {/* Single filter bar */}
             <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
-              <SearchBar value={allSearchInput} onChange={handleAllSearch} placeholder="Search patient name, email, phone..." />
+              <SearchBar value={allSearchInput} onChange={handleAllSearch} placeholder="Search patient, dietitian, email or phone..." />
               <FilterDropdown value={statusFilter}  onChange={(v) => { setStatusFilter(v);  setAllPage(1); }} options={STATUS_OPTIONS}  placeholder="Status" />
               <FilterDropdown value={paymentFilter} onChange={(v) => { setPaymentFilter(v); setAllPage(1); }} options={PAYMENT_OPTIONS} placeholder="Payment" accent="#16a34a" />
               <FilterDropdown value={sourceFilter}  onChange={(v) => { setSourceFilter(v);  setAllPage(1); }} options={SOURCE_OPTIONS}  placeholder="Booking Source" accent="#2563eb" />
@@ -916,32 +975,69 @@ export default function AppointmentTable() {
             ) : (
               <>
                 <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #edf1ee", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                  <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "1050px" }}>
+                  <Table className="table mb-0" style={{ borderCollapse: "collapse", minWidth: "960px", tableLayout: "fixed", width: "100%" }}>
                     <thead>
-                      <tr>{["S.No", "Patient", "Dietitian", "Date & Slot", "Session", "Status", "Payment", "Fee", "Created", "Actions"].map((c) => <TH key={c}>{c}</TH>)}</tr>
+                      <tr>
+                        <TH width="60px"  center>#</TH>
+                        <TH width="80px"  center>ID</TH>
+                        <TH width="16%">Patient</TH>
+                        <TH width="16%">Dietitian</TH>
+                        <TH width="15%">Appointment</TH>
+                        <TH width="13%">Created At</TH>
+                        <TH width="100px" center>Status</TH>
+                        <TH width="110px">Payment</TH>
+                        <TH width="70px"  center>Fee</TH>
+                        <TH width="100px" center>Actions</TH>
+                      </tr>
                     </thead>
                     <tbody>
                       {appointments.map((a, i) => {
                         const needsApproval = a.status === "completed" && a.payment_status === "paid" && !a.payment_approved_at;
+                        const isVideo = a.session_type === "video_call";
                         return (
                           <TR key={a.id} index={i}>
-                            <TD style={{ fontWeight: 700, color: "#1E8E3E", fontSize: "13px" }}>{(pagination.page - 1) * pagination.limit + i + 1}</TD>
+                            {/* S.No */}
+                            <TD style={{ textAlign: "center", fontWeight: 700, color: "#1E8E3E", fontSize: "13px" }}>
+                              {(pagination.page - 1) * pagination.limit + i + 1}
+                            </TD>
+                            {/* ID */}
+                            <TD style={{ textAlign: "center" }}>
+                              <span style={{ background: "#f3f4f6", color: "#374151", borderRadius: "6px", padding: "3px 7px", fontSize: "11.5px", fontWeight: 700, fontFamily: "monospace" }}>#{a.id}</span>
+                            </TD>
+                            {/* Patient */}
                             <TD>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827" }}>{a.patient?.name || "—"}</p>
-                              <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{a.patient?.phone || ""}</p>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.patient?.name || "—"}</p>
+                              {a.patient?.phone && <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#9ca3af" }}>{a.patient.phone}</p>}
                               {a.appointment_source === "admin" && <div style={{ marginTop: "4px" }}><AdminBadge /></div>}
+                              {a.appointment_source === "dietitian" && <div style={{ marginTop: "4px" }}><DietitianBookedBadge /></div>}
                             </TD>
+                            {/* Dietitian */}
                             <TD><DietitianCell d={a.dietitian} /></TD>
-                            <TD style={{ whiteSpace: "nowrap" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#374151", fontWeight: 600 }}>
-                                <LuCalendarDays size={12} color="#1E8E3E" /> {formatDate(a.appointment_date)}
+                            {/* Appointment (date + slot + session + rescheduled) */}
+                            <TD>
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12.5px", color: "#111827", fontWeight: 600 }}>
+                                <LuCalendarDays size={12} color="#1E8E3E" />
+                                {formatDate(a.appointment_date)}
                               </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#9ca3af", marginTop: "2px" }}>
-                                <LuClock size={11} /> {a.slot} · {a.duration}min
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11.5px", color: "#6b7280", marginTop: "3px" }}>
+                                <LuClock size={11} color="#9ca3af" />
+                                {a.slot} · {a.duration}min
+                                <span style={{ marginLeft: "2px", color: isVideo ? "#2563eb" : "#16a34a" }}>{isVideo ? <FaVideo size={9} /> : <FaMapMarkerAlt size={9} />}</span>
+                              </div>
+                              {a.reschedule_count > 0 && <div style={{ marginTop: "5px" }}><RescheduledBadge count={a.reschedule_count} /></div>}
+                            </TD>
+                            {/* Created At */}
+                            <TD>
+                              <div style={{ fontSize: "12.5px", color: "#374151", fontWeight: 600, whiteSpace: "nowrap" }}>
+                                {formatDate(a.created_at)}
+                              </div>
+                              <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px", whiteSpace: "nowrap" }}>
+                                {a.created_at ? new Date(a.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
                               </div>
                             </TD>
-                            <TD><SessionBadge type={a.session_type} /></TD>
-                            <TD><StatusBadge status={a.status} /></TD>
+                            {/* Status */}
+                            <TD style={{ textAlign: "center" }}><StatusBadge status={a.status} /></TD>
+                            {/* Payment */}
                             <TD>
                               <PaymentBadge status={a.payment_status} />
                               {needsApproval && (
@@ -952,24 +1048,22 @@ export default function AppointmentTable() {
                                 </div>
                               )}
                             </TD>
-                            <TD style={{ fontWeight: 700, fontSize: "13px", color: "#111827" }}>
-                              ₹{a.fee}<div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
+                            {/* Fee */}
+                            <TD style={{ textAlign: "center", fontWeight: 700, fontSize: "13px", color: "#111827" }}>
+                              ₹{a.fee}
+                              <div style={{ fontSize: "10px", color: "#9ca3af", fontWeight: 500 }}>{a.currency}</div>
                             </TD>
-                            <TD style={{ fontSize: "12px", color: "#9ca3af", whiteSpace: "nowrap" }}>{formatDate(a.created_at)}</TD>
-                            <TD>
-                              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            {/* Actions */}
+                            <TD style={{ textAlign: "center" }}>
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center", justifyContent: "center" }}>
                                 <ActionBtn onClick={() => openDetail(a.id)} title="View Details" bg="#eff6ff">
                                   <FaEye style={{ color: "#3b82f6", fontSize: "13px" }} />
                                 </ActionBtn>
                                 {a.diet_plan?.pdf_url && (
                                   <a href={a.diet_plan.pdf_url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                                    <button
-                                      style={{ height: "32px", borderRadius: "8px", background: "#f0f9f3", border: "1px solid rgba(30,142,62,0.3)", display: "flex", alignItems: "center", gap: "5px", padding: "0 10px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "#1E8E3E", whiteSpace: "nowrap" }}
-                                      onMouseEnter={(e) => { e.currentTarget.style.background = "#1E8E3E"; e.currentTarget.style.color = "#fff"; }}
-                                      onMouseLeave={(e) => { e.currentTarget.style.background = "#f0f9f3"; e.currentTarget.style.color = "#1E8E3E"; }}
-                                    >
-                                      <LuSalad size={12} /> Diet Plan
-                                    </button>
+                                    <ActionBtn title="View Diet Plan" bg="#f0fdf4">
+                                      <LuSalad size={13} color="#1E8E3E" />
+                                    </ActionBtn>
                                   </a>
                                 )}
                                 {needsApproval && (
@@ -1091,6 +1185,7 @@ export default function AppointmentTable() {
                 <PaymentBadge status={detail.payment_status} />
                 <SessionBadge type={detail.session_type} />
                 {detail.is_follow_up && <span style={{ background: "#fdf4ff", color: "#7c3aed", border: "1px solid #e9d5ff", borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>Follow-up</span>}
+                {detail.reschedule_history?.length > 0 && <RescheduledBadge count={detail.reschedule_history.length} />}
                 {detail.missed_type && <NoShowTypeBadge type={detail.missed_type} />}
                 {detail.payment_approved_at && (
                   <span style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "20px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>✓ Payment Approved</span>
@@ -1104,13 +1199,21 @@ export default function AppointmentTable() {
                       : <><FaCheck size={11} /> Mark as Completed</>}
                   </button>
                 )}
+                {detail.status !== "completed" && (
+                  <button onClick={openRescheduleModal}
+                    style={{ height: "34px", background: "#fff", color: "#7c3aed", border: "1px solid #ddd6fe", borderRadius: "8px", fontWeight: 700, fontSize: "12.5px", padding: "0 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <LuCalendarCheck size={13} /> Reschedule
+                  </button>
+                )}
               </div>
 
               {/* Payment Approval card */}
               {detail.status === "completed" && detail.payment_status === "paid" && (() => {
                 const isNoShow = detail.missed_type === "patient_no_show";
-                const { commission, afterCommission, amountCredited } = calcBreakdown(detail.fee, isNoShow, commissionPct);
+                const chargeableAmount = detail.final_amount ?? detail.fee;
+                const { commission, afterCommission, amountCredited } = calcBreakdown(chargeableAmount, isNoShow, commissionPct);
                 const needsApproval = !detail.payment_approved_at;
+                const hasDiscount = detail.discount_applied && detail.discount_applied > 0;
                 return (
                   <div style={{ background: "#fff", borderRadius: "14px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
                     <SectionHeader title="Payment Approval" icon="💳" />
@@ -1128,6 +1231,18 @@ export default function AppointmentTable() {
                         <span style={{ fontSize: "13px", color: "#6b7280" }}>Consultation Fee</span>
                         <span style={{ fontSize: "13px", fontWeight: 700, color: "#111827" }}>₹{detail.fee}</span>
                       </div>
+                      {hasDiscount && (
+                        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                          <span style={{ fontSize: "13px", color: "#6b7280" }}>Coupon Discount</span>
+                          <span style={{ fontSize: "13px", fontWeight: 700, color: "#16a34a" }}>−₹{detail.discount_applied}</span>
+                        </div>
+                      )}
+                      {hasDiscount && (
+                        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                          <span style={{ fontSize: "13px", color: "#6b7280" }}>Amount Charged</span>
+                          <span style={{ fontSize: "13px", fontWeight: 700, color: "#111827" }}>₹{chargeableAmount}</span>
+                        </div>
+                      )}
                       <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", borderBottom: isNoShow ? "1px solid #e5e7eb" : "none" }}>
                         <span style={{ fontSize: "13px", color: "#6b7280" }}>MeriDiet Commission ({commissionPct}%)</span>
                         <span style={{ fontSize: "13px", fontWeight: 700, color: "#ef4444" }}>−₹{commission}</span>
@@ -1185,9 +1300,21 @@ export default function AppointmentTable() {
                       <div className="col-6"><InfoRow label="Time Slot" value={`${detail.slot} (${detail.duration} min)`} /></div>
                       <div className="col-6"><InfoRow label="Fee" value={`₹${detail.fee} ${detail.currency}`} /></div>
                       <div className="col-6"><InfoRow label="Booked By" value={detail.appointment_source === "admin" ? "Admin" : detail.appointment_source === "dietitian" ? "Dietitian" : "User (Website)"} /></div>
+                      {detail.payment_method && <div className="col-6"><InfoRow label="Payment Method" value={detail.payment_method.charAt(0).toUpperCase() + detail.payment_method.slice(1)} /></div>}
                       {detail.parent_appointment_id && <div className="col-6"><InfoRow label="Parent Appointment" value={`#${detail.parent_appointment_id}`} /></div>}
+                      {detail.is_follow_up && detail.follow_up_type && <div className="col-6"><InfoRow label="Follow-up Type" value={detail.follow_up_type.replace(/_/g, " ")} /></div>}
                       {detail.payment_id && <div className="col-6"><InfoRow label="Payment ID" value={detail.payment_id} mono /></div>}
                       {detail.order_id && <div className="col-6"><InfoRow label="Order ID" value={detail.order_id} mono /></div>}
+                      <div className="col-6">
+                        <div style={{ background: "#f8f9fa", borderRadius: "10px", padding: "10px 14px" }}>
+                          <small style={{ color: "#aaa", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>Diet Plan</small>
+                          {detail.diet_plan_sent
+                            ? <p style={{ margin: "2px 0 0", fontWeight: 600, color: "#16a34a", fontSize: "13px", display: "flex", alignItems: "center", gap: "5px" }}>
+                                ✓ Sent{detail.diet_plan_file_url && <a href={detail.diet_plan_file_url} target="_blank" rel="noreferrer" style={{ color: "#2563eb", fontSize: "12px", fontWeight: 600, marginLeft: "4px" }}>View PDF</a>}
+                              </p>
+                            : <p style={{ margin: "2px 0 0", fontWeight: 600, color: "#9ca3af", fontSize: "13px" }}>Not sent yet</p>}
+                        </div>
+                      </div>
                     </div>
                     {detail.notes && (<><SectionHeader title="Patient Notes" icon="📝" /><div style={{ background: "#f8f9fa", borderRadius: "10px", padding: "12px 14px", fontSize: "13px", color: "#374151", lineHeight: 1.6 }}>{detail.notes}</div></>)}
                     {detail.dietitian_notes && (<><SectionHeader title="Dietitian Notes" icon="🩺" /><div style={{ background: "#f0fdf4", borderRadius: "10px", padding: "12px 14px", fontSize: "13px", color: "#374151", lineHeight: 1.6, border: "1px solid #bbf7d0" }}>{detail.dietitian_notes}</div></>)}
@@ -1393,6 +1520,118 @@ export default function AppointmentTable() {
             {approvingPayment
               ? <><span className="spinner-border spinner-border-sm" role="status" /> Approving...</>
               : <><MdPayment size={15} /> Approve &amp; Credit</>}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          RESCHEDULE MODAL
+      ══════════════════════════════════════════════════════════════════════ */}
+      <Modal show={showRescheduleModal} onHide={() => !submittingReschedule && setShowRescheduleModal(false)} centered scrollable size="lg">
+        <Modal.Header closeButton={!submittingReschedule} style={{ borderBottom: "1px solid #f3f4f6", padding: "16px 20px", flexShrink: 0 }}>
+          <Modal.Title style={{ fontSize: "14px", fontWeight: 800, color: "#111827", display: "flex", alignItems: "center", gap: "8px" }}>
+            <LuCalendarCheck size={17} color="#7c3aed" /> Reschedule Appointment · #{detail?.id}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: "20px", overflowY: "auto" }}>
+          {/* Summary strip */}
+          {detail && (
+            <div style={{ display: "flex", gap: "24px", background: "#f8f9fa", borderRadius: "10px", padding: "12px 16px", marginBottom: "18px", flexWrap: "wrap" }}>
+              <div><p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase" }}>Patient</p><p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#111827" }}>{detail.patient?.name || "—"}</p></div>
+              <div><p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase" }}>Dietitian</p><p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#111827" }}>{detail.dietitian?.name || "—"}</p></div>
+              <div><p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase" }}>Current Slot</p><p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "#374151" }}>{formatDate(detail.appointment_date)} · {detail.slot}</p></div>
+            </div>
+          )}
+
+          {rescheduleSlotsLoading ? (
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <div className="spinner-border" style={{ color: "#7c3aed", width: "2rem", height: "2rem" }} role="status" />
+              <p style={{ marginTop: "12px", color: "#aaa", fontSize: "13px" }}>Loading available slots...</p>
+            </div>
+          ) : rescheduleSlotsData.length === 0 ? (
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "16px", textAlign: "center", fontSize: "13px", color: "#ef4444", fontWeight: 600 }}>
+              No available slots in the next 30 days for this dietitian.
+            </div>
+          ) : (
+            <>
+              {/* Date strip — horizontal scroll, no wrap */}
+              <div style={{ marginBottom: "18px" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Select Date</label>
+                <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+                  {rescheduleSlotsData.map((d) => {
+                    const active   = rescheduleDate === d.date;
+                    const todayISO = new Date().toISOString().slice(0, 10);
+                    const isToday  = d.date === todayISO;
+                    const dayLabel = isToday ? "Today" : d.day.slice(0, 3);
+                    const dateNum  = new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                    return (
+                      <button key={d.date} onClick={() => { setRescheduleDate(d.date); setRescheduleSlot(""); }}
+                        style={{ flexShrink: 0, padding: "8px 14px", border: `1.5px solid ${active ? "#7c3aed" : "#e5e7eb"}`, borderRadius: "10px", background: active ? "#7c3aed" : "#fff", cursor: "pointer", textAlign: "center", minWidth: "66px", transition: "all 0.15s" }}>
+                        <span style={{ display: "block", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: active ? "rgba(255,255,255,0.8)" : "#9ca3af" }}>{dayLabel}</span>
+                        <span style={{ display: "block", fontSize: "13px", fontWeight: 700, marginTop: "2px", color: active ? "#fff" : "#111827" }}>{dateNum}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Slot grid — capped height so it doesn't push the modal off screen */}
+              {rescheduleDate && (() => {
+                const rawSlots = rescheduleSlotsData.find((d) => d.date === rescheduleDate)?.slots || [];
+                const toMins   = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+                const fmtHHMM  = (mins) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+                const fmtTime  = (t) => { const [h, m] = t.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`; };
+                const addMins  = (t, m) => fmtHHMM(toMins(t) + m);
+                const todayISO = new Date().toISOString().slice(0, 10);
+                const nowMins  = new Date().getHours() * 60 + new Date().getMinutes();
+                const isPast   = (s) => rescheduleDate < todayISO || (rescheduleDate === todayISO && toMins(s) < nowMins);
+                const expanded = rawSlots.flatMap((s) => {
+                  if (!s.includes("-")) return isPast(s) ? [] : [s];
+                  const [start, end] = s.split("-");
+                  const slots = [];
+                  let cur = toMins(start);
+                  while (cur + 30 <= toMins(end)) { const str = fmtHHMM(cur); if (!isPast(str)) slots.push(str); cur += 30; }
+                  return slots;
+                });
+                return (
+                  <div style={{ marginBottom: "18px" }}>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Select Time Slot</label>
+                    {expanded.length === 0 ? (
+                      <p style={{ fontSize: "13px", color: "#9ca3af", margin: 0 }}>No available slots on this date.</p>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: "8px", maxHeight: "220px", overflowY: "auto", paddingRight: "4px" }}>
+                        {expanded.map((s) => {
+                          const active = rescheduleSlot === s;
+                          return (
+                            <button key={s} onClick={() => setRescheduleSlot(s)}
+                              style={{ padding: "10px 8px", border: `1.5px solid ${active ? "#7c3aed" : "#e5e7eb"}`, borderRadius: "10px", background: active ? "#7c3aed" : "#fff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}>
+                              <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: active ? "#fff" : "#111827" }}>{fmtTime(s)} – {fmtTime(addMins(s, 30))}</span>
+                              <span style={{ display: "block", fontSize: "10px", fontWeight: 600, marginTop: "3px", color: active ? "rgba(255,255,255,0.85)" : "#7c3aed" }}>Available</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Reason */}
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "7px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Reason (optional)</label>
+                <textarea value={rescheduleReason} onChange={(e) => setRescheduleReason(e.target.value)} rows={2} placeholder="Reason for rescheduling..."
+                  style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "10px 12px", fontSize: "13px", resize: "none", outline: "none" }} />
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: "1px solid #f3f4f6", padding: "12px 20px", gap: "8px", flexShrink: 0 }}>
+          <Button variant="outline-secondary" onClick={() => setShowRescheduleModal(false)} disabled={submittingReschedule} style={{ borderRadius: "8px", fontWeight: 600, fontSize: "13px" }}>Cancel</Button>
+          <Button onClick={handleRescheduleSubmit} disabled={submittingReschedule || !rescheduleDate || !rescheduleSlot}
+            style={{ background: "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", opacity: (!rescheduleDate || !rescheduleSlot) ? 0.6 : 1 }}>
+            {submittingReschedule
+              ? <><span className="spinner-border spinner-border-sm" role="status" /> Rescheduling...</>
+              : <><LuCalendarCheck size={14} /> Confirm Reschedule</>}
           </Button>
         </Modal.Footer>
       </Modal>
